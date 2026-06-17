@@ -1,0 +1,16 @@
+#
+# RefineryCore - version 1.0.0
+#
+#   Refinery Core is a plugin provided by the Refinery Team used as a library for other
+#   plugins and our plugins to make development easier without the hassle of having to
+#   recreate everything from scratch in a plugin.
+#
+#   This plugin contains libraries from Configuration System, Command System, A simple
+#   GUI system, Builders, and more to come! These systems are flexible for development needs.
+#
+#   Big thanks to the Refinery Team for building this project.
+#   - Repository: https://ghrepo.refineryteam.xyz/refinerycore (Redirects to the GitHub repository)
+#   - Immediate Repository Link: https://github.com/RefineryTeam/RefineryCore
+#   - Website: https://refineryteam.xyz
+#
+
