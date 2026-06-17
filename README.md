@@ -4,6 +4,52 @@ A modern Paper plugin framework providing annotation-driven commands, GUIs, and 
 
 ---
 
+## Installation
+
+**Maven**
+
+```xml
+<repository>
+    <id>reaudacity-releases</id>
+    <url>https://repository.reaudacity.online/releases</url>
+</repository>
+
+<dependency>
+    <groupId>xyz.refineryteam</groupId>
+    <artifactId>refinerycore</artifactId>
+    <version>0.0.1</version>
+    <scope>provided</scope>
+</dependency>
+```
+
+**Gradle (Kotlin DSL)**
+
+```kotlin
+repositories {
+    maven("https://repository.reaudacity.online/releases")
+}
+
+dependencies {
+    compileOnly("xyz.refineryteam:refinerycore:0.0.1")
+}
+```
+
+**Gradle (Groovy)**
+
+```groovy
+repositories {
+    maven { url "https://repository.reaudacity.online/releases" }
+}
+
+dependencies {
+    compileOnly "xyz.refineryteam:refinerycore:0.0.1"
+}
+```
+
+**Note:** Make sure that if you're using this plugin, you add it to your dependencies field in your plugin.yml file!
+
+---
+
 ## Requirements
 
 - Java 21+
@@ -130,7 +176,7 @@ ItemBuilder.of(Material.PLAYER_HEAD)
     .name("<yellow>Abdullah")
     .lore("<gray>Click to view profile", "<dark_gray>Staff member")
     .skullOwner(player.getUniqueId())
-    .build();
+        .build();
 ```
 
 Key methods:
