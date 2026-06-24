@@ -17,7 +17,7 @@ A modern Paper plugin framework providing annotation-driven commands, GUIs, and 
 <dependency>
     <groupId>xyz.refineryteam</groupId>
     <artifactId>refinerycore</artifactId>
-    <version>0.0.1</version>
+    <version>0.0.2</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -30,7 +30,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("xyz.refineryteam:refinerycore:0.0.1")
+    compileOnly("xyz.refineryteam:refinerycore:0.0.2")
 }
 ```
 
@@ -42,7 +42,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly "xyz.refineryteam:refinerycore:0.0.1"
+    compileOnly "xyz.refineryteam:refinerycore:0.0.2"
 }
 ```
 

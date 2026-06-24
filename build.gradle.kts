@@ -13,6 +13,8 @@ dependencies {
     paperweight.paperDevBundle("1.21.11-R0.1-SNAPSHOT")
     annotationProcessor("org.projectlombok:lombok:1.18.46")
     compileOnly("org.projectlombok:lombok:1.18.46")
+
+    compileOnly("com.zaxxer:HikariCP:7.0.2")
 }
 
 bukkitPluginYaml {
@@ -22,6 +24,8 @@ bukkitPluginYaml {
 
     authors.addAll("RefineryTeam")
     website = "https://refineryteam.xyz"
+
+    libraries.addAll("com.zaxxer:HikariCP:7.0.2")
 }
 
 java {
