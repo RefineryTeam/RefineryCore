@@ -66,8 +66,8 @@ publishing {
 
     repositories {
         maven {
-            name = "Reposilite"
-            url = uri("https://repository.reaudacity.online")
+            name = "Reaudacity-Reposilite"
+            url = uri("https://repository.reaudacity.online/releases")
 
             credentials {
                 username = System.getenv("MAVEN_USERNAME")
