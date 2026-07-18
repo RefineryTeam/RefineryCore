@@ -1,5 +1,6 @@
 plugins {
     id("java-library")
+    id("maven-publish")
     id("xyz.jpenilla.run-paper") version "3.0.2"
     id("xyz.jpenilla.resource-factory-bukkit-convention") version "1.3.1"
 }
@@ -39,6 +40,41 @@ bukkitPluginYaml {
 
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+    withSourcesJar()
+}
+
+// maven-publish (and the default jar task) names the produced artifact after
+// this, lowercased, so the file that actually lands in Reposilite is
+// "refinerycore-<version>.jar" regardless of casing anywhere else (project
+// dir name, GitHub repo name, etc). This is the one setting that controls
+// the *published* filename — renaming a copy in build/libs after the fact
+// has no effect on what `publish` uploads, since it re-resolves the
+// artifact from this name, not from whatever sits in build/libs.
+base.archivesName = project.name.lowercase()
+
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            from(components["java"])
+
+            groupId = project.group.toString()
+            artifactId = project.name.lowercase()
+            version = project.version.toString()
+        }
+    }
+
+    repositories {
+        maven {
+            name = "Reposilite"
+            url = uri("https://repository.reaudacity.online/releases")
+
+            credentials {
+                username = System.getenv("REPOSILITE_USER")
+                password = System.getenv("REPOSILITE_TOKEN")
+            }
+        }
+    }
 }
 
 tasks {

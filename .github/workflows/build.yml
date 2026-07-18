@@ -31,8 +31,21 @@ jobs:
       - name: Build
         run: ./gradlew build --no-daemon
 
-      # Uploaded so the publish workflow (triggered via workflow_run) can
-      # grab the exact jar this build produced instead of rebuilding.
+      # Cosmetic only — matches the lowercase naming used when publishing,
+      # so the artifact attached to this workflow run matches the jar that
+      # will eventually land in Reposilite. The publish workflow does not
+      # read from this artifact; it re-runs `./gradlew publish`, which
+      # names the real uploaded jar via `base.archivesName` in build.gradle.kts.
+      - name: Lowercase jar filename
+        run: |
+          cd build/libs
+          for f in *.jar; do
+            lower=$(echo "$f" | tr '[:upper:]' '[:lower:]')
+            if [ "$f" != "$lower" ]; then
+              mv -- "$f" "$lower"
+            fi
+          done
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:

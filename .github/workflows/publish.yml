@@ -31,48 +31,14 @@ jobs:
       - name: Setup permissions
         run: chmod +x ./gradlew
 
-      # Rebuilding (rather than downloading the Build workflow's artifact)
-      # keeps this workflow self-contained and avoids cross-workflow
-      # artifact-download auth headaches; it's the same commit and the
-      # Build workflow already proved it compiles.
-      - name: Build
-        run: ./gradlew build --no-daemon
-
-      - name: Resolve project version
-        id: version
-        run: |
-          VERSION=$(./gradlew -q properties | grep "^version:" | awk '{print $2}')
-          if [ -z "$VERSION" ] || [ "$VERSION" = "unspecified" ]; then
-            echo "Could not resolve a project version from Gradle properties" >&2
-            exit 1
-          fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Locate built jar
-        id: jar
-        run: |
-          JAR_PATH=$(find build/libs -maxdepth 1 -name '*.jar' ! -name '*-sources.jar' ! -name '*-javadoc.jar' | head -n 1)
-          if [ -z "$JAR_PATH" ]; then
-            echo "No jar found in build/libs" >&2
-            exit 1
-          fi
-          echo "path=$JAR_PATH" >> "$GITHUB_OUTPUT"
-
-      - name: Publish to Reposilite
+      # `publish` depends on `build` internally, so this compiles, tests,
+      # and uploads to the "Reposilite" maven repo defined in
+      # build.gradle.kts in one step. The published filename is lowercase
+      # because `base.archivesName` is set to `project.name.lowercase()`
+      # in build.gradle.kts — that's what maven-publish actually reads,
+      # not anything in build/libs.
+      - name: Publish
         env:
-          REPOSILITE_URL: ${{ secrets.REPOSILITE_URL }}
-          REPOSILITE_TOKEN: ${{ secrets.REPOSILITE_TOKEN }}
-        run: |
-          GROUP_PATH="xyz/refineryteam"
-          ARTIFACT_ID="refinerycore"
-          VERSION="${{ steps.version.outputs.version }}"
-          JAR_PATH="${{ steps.jar.outputs.path }}"
-
-          TARGET_URL="${REPOSILITE_URL%/}/releases/${GROUP_PATH}/${ARTIFACT_ID}/${VERSION}/${ARTIFACT_ID}-${VERSION}.jar"
-
-          echo "Publishing ${JAR_PATH} -> ${TARGET_URL}"
-
-          curl --fail --show-error --silent \
-            -H "Authorization: Bearer ${REPOSILITE_TOKEN}" \
-            -T "${JAR_PATH}" \
-            "${TARGET_URL}"
+          MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
+        run: ./gradlew publish --no-daemon
