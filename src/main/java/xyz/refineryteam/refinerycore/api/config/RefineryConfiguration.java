@@ -63,7 +63,7 @@ public abstract class RefineryConfiguration {
         }
     }
 
-    private void writeDefaults(Object instance, String sectionPrefix) {
+    private void writeDefaults(@NonNull Object instance, String sectionPrefix) {
         for (Field field : instance.getClass().getDeclaredFields()) {
             field.setAccessible(true);
 
@@ -73,27 +73,32 @@ public abstract class RefineryConfiguration {
 
                 if (!yaml.contains(path)) {
                     try {
-                        yaml.set(path, field.get(instance));
+                        Object value = field.get(instance);
+                        if (value instanceof java.util.List<?> list) {
+                            yaml.set(path, new java.util.ArrayList<>(list));
+                        } else {
+                            yaml.set(path, value);
+                        }
                     } catch (IllegalAccessException e) {
                         plugin.getLogger().warning("Could not read default for: " + path);
                     }
                 }
             }
 
-            if (field.isAnnotationPresent(Category.class)) {
-                Category category = field.getAnnotation(Category.class);
-                String nestedPrefix = buildPath(sectionPrefix, category.value());
+            ConfigSection section = field.getType().getAnnotation(ConfigSection.class);
+            if (section != null) {
+                String nestedPrefix = buildPath(sectionPrefix, section.value());
                 try {
                     Object nested = field.get(instance);
                     if (nested != null) writeDefaults(nested, nestedPrefix);
                 } catch (IllegalAccessException e) {
-                    plugin.getLogger().warning("Could not access category field: " + field.getName());
+                    plugin.getLogger().warning("Could not access section field: " + field.getName());
                 }
             }
         }
     }
 
-    private void readInto(Object instance, String sectionPrefix) {
+    private void readInto(@NonNull Object instance, String sectionPrefix) {
         for (Field field : instance.getClass().getDeclaredFields()) {
             field.setAccessible(true);
 
@@ -104,21 +109,31 @@ public abstract class RefineryConfiguration {
                 if (yaml.contains(path)) {
                     try {
                         Object value = yaml.get(path);
-                        field.set(instance, castValue(field.getType(), value));
+                        if (field.getType() == java.util.List.class || field.getType() == java.util.ArrayList.class) {
+                            field.set(instance, value instanceof java.util.List<?> list
+                                    ? new java.util.ArrayList<>(list)
+                                    : new java.util.ArrayList<>());
+                        } else if (field.getType() == java.util.Map.class || field.getType() == java.util.HashMap.class) {
+                            field.set(instance, value instanceof java.util.HashMap<?, ?> map
+                                    ? new java.util.HashMap<>(map)
+                                    : new java.util.HashMap<>());
+                        } else {
+                            field.set(instance, castValue(field.getType(), value));
+                        }
                     } catch (IllegalAccessException e) {
                         plugin.getLogger().warning("Could not set field for path: " + path);
                     }
                 }
             }
 
-            if (field.isAnnotationPresent(Category.class)) {
-                Category category = field.getAnnotation(Category.class);
-                String nestedPrefix = buildPath(sectionPrefix, category.value());
+            ConfigSection section = field.getType().getAnnotation(ConfigSection.class);
+            if (section != null) {
+                String nestedPrefix = buildPath(sectionPrefix, section.value());
                 try {
                     Object nested = field.get(instance);
                     if (nested != null) readInto(nested, nestedPrefix);
                 } catch (IllegalAccessException e) {
-                    plugin.getLogger().warning("Could not access category field: " + field.getName());
+                    plugin.getLogger().warning("Could not access section field: " + field.getName());
                 }
             }
         }

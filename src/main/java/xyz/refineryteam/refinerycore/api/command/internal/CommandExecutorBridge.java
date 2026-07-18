@@ -8,12 +8,15 @@ import org.bukkit.entity.Player;
 import org.jspecify.annotations.NonNull;
 import xyz.refineryteam.refinerycore.api.command.CommandContext;
 import xyz.refineryteam.refinerycore.api.command.RefineryCommand;
+import xyz.refineryteam.refinerycore.api.command.annotation.Cooldown;
 import xyz.refineryteam.refinerycore.api.command.annotation.DefaultHandler;
 import xyz.refineryteam.refinerycore.api.command.annotation.PlayerOnly;
 import xyz.refineryteam.refinerycore.api.command.annotation.Subcommand;
-import xyz.refineryteam.refinerycore.api.command.help.HelpMenu;
+import xyz.refineryteam.refinerycore.api.cooldown.CooldownManager;
+import xyz.refineryteam.refinerycore.api.minimessage.EasyMiniMessage;
 
 import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -22,6 +25,8 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 public final class CommandExecutorBridge implements CommandExecutor, TabCompleter {
+
+    private static final CooldownManager COOLDOWNS = new CooldownManager();
 
     private final RefineryCommand instance;
     private final Map<String, Method> subcommandMap = new HashMap<>();
@@ -57,17 +62,18 @@ public final class CommandExecutorBridge implements CommandExecutor, TabComplete
             return true;
         }
 
+        if (args.length > 0 && args[0].equalsIgnoreCase("help")) {
+            instance.onHelp(context);
+            return true;
+        }
+
         if (args.length == 0 || !subcommandMap.containsKey(args[0].toLowerCase())) {
             if (defaultHandler != null) {
+                if (!checkCooldown(defaultHandler, context)) return true;
                 dispatch(defaultHandler, context);
             } else {
                 instance.onNoMatch(context);
             }
-            return true;
-        }
-
-        if (args[0].equalsIgnoreCase("help")) {
-            HelpMenu.send(sender, instance);
             return true;
         }
 
@@ -86,8 +92,41 @@ public final class CommandExecutorBridge implements CommandExecutor, TabComplete
             return true;
         }
 
+        if (!checkCooldown(method, subContext)) return true;
+
         dispatch(method, subContext);
         return true;
+    }
+
+    /**
+     * Returns {@code true} if execution should proceed. Console senders and
+     * senders holding the configured bypass permission always proceed.
+     * Non-player senders are treated as un-cooldownable (no subject UUID).
+     */
+    private boolean checkCooldown(Method method, CommandContext context) {
+        Cooldown cooldown = method.getAnnotation(Cooldown.class);
+        if (cooldown == null) return true;
+        if (!context.isPlayer()) return true;
+
+        if (!cooldown.bypassPermission().isEmpty() && context.sender().hasPermission(cooldown.bypassPermission())) {
+            return true;
+        }
+
+        String namespace = instance.getClass().getName();
+        String key = method.getName();
+        java.util.UUID subject = context.player().getUniqueId();
+        Duration duration = Duration.of(cooldown.value(), cooldown.unit().toChronoUnit());
+
+        if (COOLDOWNS.tryAcquire(namespace, key, subject, duration)) {
+            return true;
+        }
+
+        long remaining = COOLDOWNS.remainingSeconds(namespace, key, subject);
+        context.sender().sendMessage(EasyMiniMessage.format(
+                cooldown.message(),
+                net.kyori.adventure.text.minimessage.tag.resolver.Placeholder.unparsed("time", String.valueOf(remaining))
+        ));
+        return false;
     }
 
     private void dispatch(Method method, CommandContext context) {

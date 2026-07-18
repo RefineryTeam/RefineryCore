@@ -3,6 +3,7 @@ package xyz.refineryteam.refinerycore.api.command;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.jspecify.annotations.NonNull;
 import xyz.refineryteam.refinerycore.api.command.annotation.Command;
+import xyz.refineryteam.refinerycore.api.command.help.HelpMenu;
 import xyz.refineryteam.refinerycore.api.minimessage.EasyMiniMessage;
 
 public abstract class RefineryCommand {
@@ -24,5 +25,9 @@ public abstract class RefineryCommand {
 
     public void onPlayerOnly(@NonNull CommandContext context) {
         context.reply("<red>This command can only be used by players.");
+    }
+    
+    public void onHelp(@NonNull CommandContext context) {
+        HelpMenu.send(context.sender(), this);
     }
 }

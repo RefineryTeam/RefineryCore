@@ -1,16 +1,22 @@
 plugins {
     id("java-library")
-    id("io.papermc.paperweight.userdev") version "2.0.0-beta.21"
     id("xyz.jpenilla.run-paper") version "3.0.2"
     id("xyz.jpenilla.resource-factory-bukkit-convention") version "1.3.1"
 }
 
 repositories {
     mavenCentral()
+    maven("https://repo.papermc.io/repository/maven-public/")
 }
 
 dependencies {
-    paperweight.paperDevBundle("1.21.11-R0.1-SNAPSHOT")
+    // Plain Paper API — NOT paperweight.userdev. This plugin only uses public Bukkit/Paper
+    // API (no NMS), so compiling against a mapped server jar isn't necessary and only serves
+    // to lock the build to one exact version. Compiling against the lowest supported API
+    // version keeps the plugin loadable on any Paper build >= apiVersion below.
+    compileOnly("io.papermc.paper:paper-api:1.20.6-R0.1-SNAPSHOT")
+    compileOnly("org.jspecify:jspecify:1.0.0")
+
     annotationProcessor("org.projectlombok:lombok:1.18.46")
     compileOnly("org.projectlombok:lombok:1.18.46")
 
@@ -20,7 +26,10 @@ dependencies {
 bukkitPluginYaml {
     main = "xyz.refineryteam.refinerycore.plugin.RefineryCorePlugin"
     description = "The core heart plugin of RefineryTeam's projects."
-    apiVersion = "1.21.11"
+    // The lowest supported Paper API version — 1.20 means "1.20 and every version after it".
+    // Combined with the plain paper-api dependency above (instead of paperweight.userdev),
+    // this plugin's jar will load on any Paper build from 1.20 through the latest 1.21.x.
+    apiVersion = "1.20"
 
     authors.addAll("RefineryTeam")
     website = "https://refineryteam.xyz"

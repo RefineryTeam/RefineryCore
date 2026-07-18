@@ -28,6 +28,9 @@ public final class RefineryCorePlugin extends JavaPlugin implements RefineryPlug
 
         RefineryBanner.print(getConsoleSender(), getPluginMeta().getVersion());
 
+        logMessage("<dark_gray>→ <gray>Detecting server implementation...");
+        logMessage("<dark_gray>  <green>✔ <gray>Running on <white>" + getServerImplementation().getMinecraftVersion());
+
         logMessage("<dark_gray>→ <gray>Registering listeners...");
         getPluginManager().registerEvents(new GUIHandlerListener(this), this);
         logMessage("<dark_gray>  <green>✔ <gray>GUI handler registered");
