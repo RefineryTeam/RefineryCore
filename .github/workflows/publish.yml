@@ -39,6 +39,6 @@ jobs:
       # not anything in build/libs.
       - name: Publish
         env:
-          MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
-          MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
+          MAVEN_USERNAME: ${{ secrets.REPOSILITE_USER }}
+          MAVEN_PASSWORD: ${{ secrets.REPOSILITE_TOKEN }}
         run: ./gradlew publish --no-daemon

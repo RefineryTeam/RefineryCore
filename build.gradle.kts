@@ -70,8 +70,8 @@ publishing {
             url = uri("https://repository.reaudacity.online/releases")
 
             credentials {
-                username = System.getenv("REPOSILITE_USER")
-                password = System.getenv("REPOSILITE_TOKEN")
+                username = System.getenv("MAVEN_USERNAME")
+                password = System.getenv("MAVEN_PASSWORD")
             }
         }
     }
