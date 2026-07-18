@@ -19,7 +19,7 @@ import java.util.function.Predicate;
 /**
  * Single-line text input via a real anvil GUI instead of chat — useful
  * when you don't want to interrupt/leave the inventory UI (renaming an
- * item, entering a search filter or numeric amount, naming a kit, etc.)
+ * item, entering a search filter or numeric amount, naming a kit, etc)
  * and don't want the answer to flash through public chat.
  * <p>
  * Usage:
@@ -188,7 +188,7 @@ public final class AnvilPrompt implements Listener {
             return this;
         }
 
-        public @NonNull Builder onInput(@NonNull java.util.function.BiConsumer<Player, String> handler) {
+        public @NonNull Builder onInput(java.util.function.BiConsumer<Player, String> handler) {
             this.onInput = handler;
             return this;
         }
