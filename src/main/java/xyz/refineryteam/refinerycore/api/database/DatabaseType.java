@@ -7,5 +7,5 @@ package xyz.refineryteam.refinerycore.api.database;
  * {@link xyz.refineryteam.refinerycore.api.storage.TemporaryStorage} for that.
  */
 public enum DatabaseType {
-    MYSQL, SQLITE, H2
+    MYSQL, MARIADB, POSTGRESQL, SQLITE, H2
 }

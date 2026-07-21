@@ -91,6 +91,46 @@ public final class RefineryDatabase {
         return db;
     }
 
+    public static @NonNull RefineryDatabase mariadb(JavaPlugin plugin, String host, int port, String database, String username, String password) {
+        RefineryDatabase db = new RefineryDatabase(plugin, DatabaseType.MARIADB);
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl("jdbc:mariadb://" + host + ":" + port + "/" + database + "?useSSL=false&autoReconnect=true&characterEncoding=utf8");
+        config.setDriverClassName("org.mariadb.jdbc.Driver");
+        config.setUsername(username);
+        config.setPassword(password);
+        config.setMaximumPoolSize(10);
+        config.setMinimumIdle(2);
+        config.setConnectionTimeout(30000);
+        config.setIdleTimeout(600000);
+        config.setMaxLifetime(1800000);
+        config.addDataSourceProperty("cachePrepStmts", "true");
+        config.addDataSourceProperty("prepStmtCacheSize", "250");
+        config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
+        config.setPoolName(plugin.getName() + "-mariadb");
+        db.source = new HikariDataSource(config);
+        return db;
+    }
+
+    public static @NonNull RefineryDatabase postgresql(JavaPlugin plugin, String host, int port, String database, String username, String password) {
+        RefineryDatabase db = new RefineryDatabase(plugin, DatabaseType.POSTGRESQL);
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl("jdbc:postgresql://" + host + ":" + port + "/" + database);
+        config.setDriverClassName("org.postgresql.Driver");
+        config.setUsername(username);
+        config.setPassword(password);
+        config.setMaximumPoolSize(10);
+        config.setMinimumIdle(2);
+        config.setConnectionTimeout(30000);
+        config.setIdleTimeout(600000);
+        config.setMaxLifetime(1800000);
+        config.addDataSourceProperty("cachePrepStmts", "true");
+        config.addDataSourceProperty("prepStmtCacheSize", "250");
+        config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
+        config.setPoolName(plugin.getName() + "-postgresql");
+        db.source = new HikariDataSource(config);
+        return db;
+    }
+
     public Connection getConnection() throws SQLException {
         return source.getConnection();
     }

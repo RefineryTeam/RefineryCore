@@ -18,6 +18,9 @@ dependencies {
     compileOnly("io.papermc.paper:paper-api:1.20.6-R0.1-SNAPSHOT")
     compileOnly("org.jspecify:jspecify:1.0.0")
 
+    compileOnly("org.mariadb.jdbc:mariadb-java-client:3.5.3")
+    compileOnly("org.postgresql:postgresql:42.7.7")
+
     annotationProcessor("org.projectlombok:lombok:1.18.46")
     compileOnly("org.projectlombok:lombok:1.18.46")
 
@@ -35,7 +38,11 @@ bukkitPluginYaml {
     authors.addAll("RefineryTeam")
     website = "https://refineryteam.xyz"
 
-    libraries.addAll("com.zaxxer:HikariCP:7.0.2")
+    libraries.addAll(
+        "com.zaxxer:HikariCP:7.0.2",
+        "org.mariadb.jdbc:mariadb-java-client:3.5.3",
+        "org.postgresql:postgresql:42.7.7"
+    )
 }
 
 java {

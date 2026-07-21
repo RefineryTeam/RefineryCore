@@ -33,6 +33,47 @@ public enum SqlDialect {
         }
     },
 
+    /**
+     * MariaDB is a MySQL fork and, for everything this dialect layer cares about (upsert
+     * syntax, identifiers, identity columns), is wire- and syntax-compatible with MySQL.
+     * It's kept as its own {@link DatabaseType} rather than folded into MYSQL so
+     * {@link xyz.refineryteam.refinerycore.api.database.RefineryDatabase#mariadb} can use
+     * the correct JDBC driver/URL scheme without callers needing to know that detail.
+     */
+    MARIADB(DatabaseType.MARIADB) {
+        @Override
+        public String identityColumnDefinition() {
+            return MYSQL.identityColumnDefinition();
+        }
+
+        @Override
+        public String upsert(String table, String[] columns, String[] updateColumns) {
+            return MYSQL.upsert(table, columns, updateColumns);
+        }
+
+        @Override
+        public String quote(String identifier) {
+            return MYSQL.quote(identifier);
+        }
+    },
+
+    POSTGRESQL(DatabaseType.POSTGRESQL) {
+        @Override
+        public String identityColumnDefinition() {
+            return "BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY";
+        }
+
+        @Override
+        public String upsert(String table, String[] columns, String[] updateColumns) {
+            return onConflictUpsert(table, columns, updateColumns);
+        }
+
+        @Override
+        public String quote(String identifier) {
+            return "\"" + identifier + "\"";
+        }
+    },
+
     SQLITE(DatabaseType.SQLITE) {
         @Override
         public String identityColumnDefinition() {
@@ -41,7 +82,7 @@ public enum SqlDialect {
 
         @Override
         public String upsert(String table, String[] columns, String[] updateColumns) {
-            return sqliteStyleUpsert(table, columns, updateColumns);
+            return onConflictUpsert(table, columns, updateColumns);
         }
 
         @Override
@@ -88,9 +129,10 @@ public enum SqlDialect {
 
     public String tableExistsQuery() {
         return switch (this) {
-            case MYSQL -> "SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?";
+            case MYSQL, MARIADB ->
+                    "SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?";
+            case POSTGRESQL, H2 -> "SELECT 1 FROM information_schema.tables WHERE table_name = ?";
             case SQLITE -> "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?";
-            case H2 -> "SELECT 1 FROM information_schema.tables WHERE table_name = ?";
         };
     }
 
@@ -114,11 +156,12 @@ public enum SqlDialect {
     }
 
     /**
-     * SQLite's upsert syntax (`INSERT ... ON CONFLICT (...) DO UPDATE SET ...`) needs an
-     * explicit conflict target, which the default repository always resolves to the
-     * primary key column, so this helper is shared by dialects that follow that grammar.
+     * The `INSERT ... ON CONFLICT (pk) DO UPDATE SET col = excluded.col` grammar shared by
+     * SQLite and PostgreSQL. The conflict target is always resolved to the primary key
+     * column, which by calling convention is always index 0 of {@code columns} (see
+     * {@link xyz.refineryteam.refinerycore.api.database.repository.AbstractRepository}).
      */
-    protected String sqliteStyleUpsert(String table, String @NonNull [] columns, String[] updateColumns) {
+    protected String onConflictUpsert(String table, String @NonNull [] columns, String @NonNull [] updateColumns) {
         String primaryKey = columns[0];
         StringBuilder sql = new StringBuilder(insert(table, columns))
                 .append(" ON CONFLICT(").append(quote(primaryKey)).append(") DO UPDATE SET ");
