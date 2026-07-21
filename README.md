@@ -1,3 +1,7 @@
+[![Version](https://repository.reaudacity.online/api/badge/latest/releases/xyz/refineryteam/refinerycore/?color=40c14a&name=RefineryCore&prefix=v)](https://modrinth.com/projects/refinerycore)
+[![Build](https://github.com/RefineryTeam/RefineryCore/actions/workflows/build.yml/badge.svg)](https://github.com/RefineryTeam/RefineryCore/actions/workflows/build.yml) 
+[![Publish](https://github.com/RefineryTeam/RefineryCore/actions/workflows/publish.yml/badge.svg)](https://github.com/RefineryTeam/RefineryCore/actions/workflows/publish.yml)
+
 # RefineryCore
 
 A modern Paper plugin framework providing annotation-driven commands, GUIs, and configuration — built for the Refinery Team.
@@ -17,7 +21,7 @@ A modern Paper plugin framework providing annotation-driven commands, GUIs, and 
 <dependency>
     <groupId>xyz.refineryteam</groupId>
     <artifactId>refinerycore</artifactId>
-    <version>0.0.2</version>
+    <version>VERSION</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -30,7 +34,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("xyz.refineryteam:refinerycore:0.0.2")
+    compileOnly("xyz.refineryteam:refinerycore:VERSION")
 }
 ```
 
@@ -42,7 +46,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly "xyz.refineryteam:refinerycore:0.0.2"
+    compileOnly "xyz.refineryteam:refinerycore:VERSION"
 }
 ```
 

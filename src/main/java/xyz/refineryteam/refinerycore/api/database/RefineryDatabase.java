@@ -19,8 +19,22 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.logging.Level;
 
+/**
+ * A persistent, connection-pooled (via HikariCP) SQL database backing a plugin.
+ * <p>
+ * For entity access, prefer building a
+ * {@link xyz.refineryteam.refinerycore.api.database.repository.Repository} on top of this
+ * rather than writing raw SQL against {@link #execute} / {@link #query} directly — the
+ * repository layer generates dialect-correct SQL automatically for whichever
+ * {@link DatabaseType} this database was opened as.
+ * <p>
+ * For data that doesn't need to survive a restart, see
+ * {@link xyz.refineryteam.refinerycore.api.storage.TemporaryStorage} instead of using this
+ * class with a throwaway file.
+ */
 public final class RefineryDatabase {
 
+    @Getter
     private final JavaPlugin plugin;
     @Getter
     private final DatabaseType type;
@@ -29,11 +43,6 @@ public final class RefineryDatabase {
     private RefineryDatabase(JavaPlugin plugin, DatabaseType type) {
         this.plugin = plugin;
         this.type = type;
-    }
-
-    @Contract(value = "_ -> new", pure = true)
-    public static @NonNull RefineryDatabase memory(JavaPlugin plugin) {
-        return new RefineryDatabase(plugin, DatabaseType.MEMORY);
     }
 
     public static @NonNull RefineryDatabase sqlite(JavaPlugin plugin, String fileName) {
@@ -83,7 +92,6 @@ public final class RefineryDatabase {
     }
 
     public Connection getConnection() throws SQLException {
-        if (type == DatabaseType.MEMORY) throw new UnsupportedOperationException("MEMORY type has no SQL connection.");
         return source.getConnection();
     }
 
@@ -117,10 +125,6 @@ public final class RefineryDatabase {
     @Contract("_, _, _ -> new")
     public <T> @NonNull CompletableFuture<List<T>> queryAsync(@NonNull String sql, @NonNull Consumer<PreparedStatement> prepare, @NonNull Function<ResultSet, T> mapper) {
         return CompletableFuture.supplyAsync(() -> query(sql, prepare, mapper));
-    }
-
-    public boolean isMemory() {
-        return type == DatabaseType.MEMORY;
     }
 
     public void close() {

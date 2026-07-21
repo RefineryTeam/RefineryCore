@@ -2,7 +2,7 @@ name: Publish
 
 on:
   push:
-    paths-ignore: [ "README.md", "gradlew*" ]
+    paths-ignore: [ "README.md", "gradlew*", "LICENSE" ]
   workflow_run:
     workflows: [ "Build" ]
     branches: [ "development" ]

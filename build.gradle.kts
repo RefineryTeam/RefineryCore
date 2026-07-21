@@ -42,6 +42,7 @@ java {
     toolchain.languageVersion = JavaLanguageVersion.of(21)
 
     withSourcesJar()
+    withJavadocJar()
 }
 
 // maven-publish (and the default jar task) names the produced artifact after
