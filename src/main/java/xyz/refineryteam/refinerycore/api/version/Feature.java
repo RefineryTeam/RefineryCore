@@ -1,7 +1,7 @@
 package xyz.refineryteam.refinerycore.api.version;
 
 /**
- * Capability flags for behaviour that differs between Minecraft versions.
+ * Capability flags for behavior that differs between Minecraft versions.
  * <p>
  * Callers should check {@link ServerImplementation#supports(Feature)} instead of
  * comparing {@link ServerImplementation#getMinecraftVersion()} directly — this keeps

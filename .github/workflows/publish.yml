@@ -1,6 +1,8 @@
 name: Publish
 
 on:
+  push:
+    paths-ignore: [ "README.md", "gradlew*" ]
   workflow_run:
     workflows: [ "Build" ]
     branches: [ "development" ]

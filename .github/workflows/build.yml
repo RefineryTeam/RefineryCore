@@ -3,6 +3,7 @@ name: Build
 on:
   push:
     branches: [ "development" ]
+    paths-ignore: [ "README.md", "gradlew*" ]
   pull_request:
     branches: [ "development" ]
 
