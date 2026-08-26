@@ -1,5 +1,6 @@
 package xyz.refineryteam.refinerycore.api.config;
 
+import lombok.Getter;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -16,7 +17,9 @@ import java.util.logging.Level;
 
 public abstract class RefineryConfiguration {
 
+    @Getter
     private File file;
+    @Getter
     private FileConfiguration yaml;
     private final JavaPlugin plugin;
 
@@ -177,7 +180,4 @@ public abstract class RefineryConfiguration {
         return meta;
     }
 
-    public FileConfiguration getYaml() {
-        return yaml;
-    }
 }

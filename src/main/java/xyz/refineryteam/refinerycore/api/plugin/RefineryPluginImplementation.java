@@ -9,7 +9,9 @@ import xyz.refineryteam.refinerycore.api.minimessage.EasyMiniMessage;
 import xyz.refineryteam.refinerycore.api.version.ServerImplementation;
 import xyz.refineryteam.refinerycore.api.version.ServerImplementations;
 
+import java.util.Collections;
 import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 public interface RefineryPluginImplementation {
@@ -18,7 +20,10 @@ public interface RefineryPluginImplementation {
 
     /**
      * Method used to reload data, this is for refinery plugins only.
+     *
+     * @deprecated Use {@link RefineryPlugin#reloadPlugin()} instead.
      */
+    @Deprecated(since = "0.0.9")
     default void reload() {
         if (this instanceof JavaPlugin plugin)
             plugin.reloadConfig();
@@ -26,11 +31,11 @@ public interface RefineryPluginImplementation {
 
     /**
      * Weakly-keyed so entries are dropped when a plugin instance is
-     * garbage-collected (e.g. after /reload), preventing classloader leaks.
+     * garbage-collected (e.g., after /reload), preventing classloader leaks.
      * Wrapped in a synchronized view — WeakHashMap is not thread-safe.
      */
     Map<JavaPlugin, CommandRegistry> REGISTRIES =
-            java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
+            Collections.synchronizedMap(new WeakHashMap<>());
 
     default ConsoleCommandSender getConsoleSender() {
         return Bukkit.getConsoleSender();
@@ -52,7 +57,7 @@ public interface RefineryPluginImplementation {
      * classloader leak, unlike a plain static map keyed by {@code Class}.
      */
     default CommandRegistry getCommandRegistry() {
-        if (!(this instanceof org.bukkit.plugin.java.JavaPlugin javaPlugin)) {
+        if (!(this instanceof JavaPlugin javaPlugin)) {
             throw new IllegalStateException(getClass().getName()
                     + " must extend JavaPlugin to use getCommandRegistry().");
         }
