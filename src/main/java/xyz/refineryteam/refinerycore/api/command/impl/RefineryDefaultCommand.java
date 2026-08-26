@@ -40,7 +40,7 @@ public class RefineryDefaultCommand extends RefineryCommand {
                 .onSuccess(() -> context.replyRefineryPrefix("<green>Reloaded successfully."))
                 .onFailure(e -> {
                     context.replyRefineryPrefix("<red>Something went wrong.");
-                    plugin.getLogger().severe("Reload failed: " + e.getMessage());
+                    plugin.getCrashHandler().report(e, "while reloading RefineryCore");
                 });
     }
 

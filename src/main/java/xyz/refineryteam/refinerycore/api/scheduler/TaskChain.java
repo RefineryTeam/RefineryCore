@@ -33,18 +33,17 @@ public final class TaskChain<T> {
 
     private final JavaPlugin plugin;
     private final TaskChain<?> root;
-    // Runs the remaining chain with the given value, on whatever thread
-    // the previous step ended on.
-    private final Consumer<ChainContext> link;
+    private final Consumer<ChainContext> step;
+    private volatile TaskChain<?> next;
 
     private record ChainContext(@Nullable Object value, @Nullable Runnable abortAction) {}
 
     private volatile boolean aborted = false;
 
-    private TaskChain(JavaPlugin plugin, TaskChain<?> root, Consumer<ChainContext> link) {
+    private TaskChain(JavaPlugin plugin, TaskChain<?> root, Consumer<ChainContext> step) {
         this.plugin = plugin;
         this.root = root != null ? root : this;
-        this.link = link;
+        this.step = step;
     }
 
     /**
@@ -65,10 +64,10 @@ public final class TaskChain<T> {
      * @return a new chain link; call further steps or {@link #execute()}
      */
     public <R> @NonNull TaskChain<R> async(@NonNull Supplier<R> work) {
-        return new TaskChain<>(plugin, root, ctx -> {
+        return append(ctx -> {
             if (root.aborted) return;
             plugin.getServer().getAsyncScheduler().runNow(plugin, t ->
-                    advance(work.get()));
+                    runSafely(() -> advance(work.get())));
         });
     }
 
@@ -80,12 +79,12 @@ public final class TaskChain<T> {
      * @return a new chain link
      */
     public <R> @NonNull TaskChain<R> sync(@NonNull Function<T, R> work) {
-        return new TaskChain<>(plugin, root, ctx -> {
+        return append(ctx -> {
             if (root.aborted) return;
             @SuppressWarnings("unchecked")
             T value = (T) ctx.value();
             plugin.getServer().getGlobalRegionScheduler().run(plugin, t ->
-                    advance(work.apply(value)));
+                    runSafely(() -> advance(work.apply(value))));
         });
     }
 
@@ -108,13 +107,15 @@ public final class TaskChain<T> {
      * @return a new chain link with the same flowing value
      */
     public @NonNull TaskChain<T> asyncConsume(@NonNull Consumer<T> work) {
-        return new TaskChain<>(plugin, root, ctx -> {
+        return append(ctx -> {
             if (root.aborted) return;
             @SuppressWarnings("unchecked")
             T value = (T) ctx.value();
             plugin.getServer().getAsyncScheduler().runNow(plugin, t -> {
-                work.accept(value);
-                advance(value);
+                runSafely(() -> {
+                    work.accept(value);
+                    advance(value);
+                });
             });
         });
     }
@@ -127,7 +128,7 @@ public final class TaskChain<T> {
      * @return a new chain link that only continues when the value is non-null
      */
     public @NonNull TaskChain<T> abortIfNull(@Nullable Consumer<T> onAbort) {
-        return new TaskChain<>(plugin, root, ctx -> {
+        return append(ctx -> {
             if (root.aborted) return;
             @SuppressWarnings("unchecked")
             T value = (T) ctx.value();
@@ -136,7 +137,7 @@ public final class TaskChain<T> {
                 if (onAbort != null) onAbort.accept(null);
                 return;
             }
-            link.accept(ctx);
+            advance(value);
         });
     }
 
@@ -149,7 +150,7 @@ public final class TaskChain<T> {
      * @return a new chain link that only continues when the condition holds
      */
     public @NonNull TaskChain<T> abortIf(@NonNull Predicate<T> condition, @Nullable Consumer<T> onAbort) {
-        return new TaskChain<>(plugin, root, ctx -> {
+        return append(ctx -> {
             if (root.aborted) return;
             @SuppressWarnings("unchecked")
             T value = (T) ctx.value();
@@ -158,7 +159,7 @@ public final class TaskChain<T> {
                 if (onAbort != null) onAbort.accept(value);
                 return;
             }
-            link.accept(ctx);
+            advance(value);
         });
     }
 
@@ -170,7 +171,7 @@ public final class TaskChain<T> {
      * @return this chain link
      */
     public @NonNull TaskChain<T> onError(@NonNull Consumer<Throwable> handler) {
-        errorHandler = handler;
+        root.errorHandler = handler;
         return this;
     }
 
@@ -181,21 +182,45 @@ public final class TaskChain<T> {
      * throws.
      */
     public void execute() {
-        if (executed) throw new IllegalStateException("TaskChain already executed");
-        executed = true;
-        link.accept(new ChainContext(null, null));
+        if (root.executed) throw new IllegalStateException("TaskChain already executed");
+        root.executed = true;
+        root.advance(null);
     }
 
     private volatile boolean executed = false;
 
     private void advance(@Nullable Object value) {
+        TaskChain<?> following = next;
+        if (following == null) return;
+        following.runStep(new ChainContext(value, null));
+    }
+
+    private void runStep(@NonNull ChainContext context) {
         try {
-            link.accept(new ChainContext(value, null));
+            step.accept(context);
         } catch (Throwable t) {
-            Consumer<Throwable> handler = root.errorHandler;
-            if (handler != null) handler.accept(t);
-            else plugin.getLogger().severe("TaskChain step failed: " + t);
+            handleError(t);
         }
+    }
+
+    private void runSafely(@NonNull Runnable action) {
+        try {
+            action.run();
+        } catch (Throwable t) {
+            handleError(t);
+        }
+    }
+
+    private void handleError(@NonNull Throwable throwable) {
+        Consumer<Throwable> handler = root.errorHandler;
+        if (handler != null) handler.accept(throwable);
+        else plugin.getLogger().severe("TaskChain step failed: " + throwable);
+    }
+
+    private <R> @NonNull TaskChain<R> append(@NonNull Consumer<ChainContext> step) {
+        TaskChain<R> following = new TaskChain<>(plugin, root, step);
+        next = following;
+        return following;
     }
 
     // Entity-scoped variant helpers --------------------------------------
@@ -211,12 +236,12 @@ public final class TaskChain<T> {
      * @return a new chain link
      */
     public <R> @NonNull TaskChain<R> atEntity(@NonNull Entity entity, @NonNull Function<T, R> work) {
-        return new TaskChain<>(plugin, root, ctx -> {
+        return append(ctx -> {
             if (root.aborted) return;
             @SuppressWarnings("unchecked")
             T value = (T) ctx.value();
             var scheduled = entity.getScheduler().run(plugin, t ->
-                    advance(work.apply(value)), null);
+                    runSafely(() -> advance(work.apply(value))), null);
             if (scheduled == null) {
                 // Entity retired — skip the step but keep the chain alive.
                 advance(value);

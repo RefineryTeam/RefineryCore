@@ -117,7 +117,7 @@ public abstract class RefineryConfiguration {
                                     ? new java.util.ArrayList<>(list)
                                     : new java.util.ArrayList<>());
                         } else if (field.getType() == java.util.Map.class || field.getType() == java.util.HashMap.class) {
-                            field.set(instance, value instanceof java.util.HashMap<?, ?> map
+                            field.set(instance, value instanceof java.util.Map<?, ?> map
                                     ? new java.util.HashMap<>(map)
                                     : new java.util.HashMap<>());
                         } else {

@@ -30,8 +30,8 @@ public final class TimeFormat {
     private static final long MONTH = DAY * 30;
     private static final long YEAR = DAY * 365;
 
-    private static final Pattern PARSE_PATTERN =
-            Pattern.compile("(\\d+)\\s*(y|mo|w|d|h|m|s|ms)", Pattern.CASE_INSENSITIVE);
+        private static final Pattern PARSE_PATTERN =
+            Pattern.compile("(\\d+)\\s*(y|mo|w|d|h|ms|m|s)", Pattern.CASE_INSENSITIVE);
 
     private TimeFormat() {}
 

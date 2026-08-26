@@ -65,9 +65,10 @@ public final class ProxyMessenger {
             BiConsumer<Player, byte[]> handler = handlers.get(subchannel);
             if (handler != null) {
                 // ByteArrayDataInput can't report its read position, so
-                // re-derive the payload: the subchannel header is a 2-byte
-                // modified-UTF8 length prefix plus the characters themselves.
-                int headerBytes = 2 + subchannel.length();
+                // re-encode the subchannel to recover its exact header size.
+                var encodedSubchannel = ByteStreams.newDataOutput();
+                encodedSubchannel.writeUTF(subchannel);
+                int headerBytes = encodedSubchannel.toByteArray().length;
                 byte[] payload = new byte[Math.max(0, message.length - headerBytes)];
                 System.arraycopy(message, headerBytes, payload, 0, payload.length);
                 handler.accept(player, payload);

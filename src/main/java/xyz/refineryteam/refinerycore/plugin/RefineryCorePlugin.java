@@ -1,11 +1,8 @@
 package xyz.refineryteam.refinerycore.plugin;
 
 import lombok.Getter;
-import org.bukkit.plugin.java.JavaPlugin;
 import org.jspecify.annotations.NonNull;
 import xyz.refineryteam.refinerycore.api.command.impl.RefineryDefaultCommand;
-import xyz.refineryteam.refinerycore.api.crash.CrashHandler;
-import xyz.refineryteam.refinerycore.api.crash.CrashHint;
 import xyz.refineryteam.refinerycore.api.gui.handler.GUIHandlerListener;
 import xyz.refineryteam.refinerycore.api.plugin.RefineryPlugin;
 import xyz.refineryteam.refinerycore.plugin.banner.RefineryBanner;
@@ -16,9 +13,6 @@ public final class RefineryCorePlugin extends RefineryPlugin  {
     @Getter
     private static RefineryCorePlugin instance;
 
-    @Getter
-    private CrashHandler crashHandler;
-
     private static final int TOTAL_STEPS = 4;
 
     public RefineryCorePlugin() {
@@ -27,6 +21,7 @@ public final class RefineryCorePlugin extends RefineryPlugin  {
 
     @Override
     public void onLoad() {
+        super.onLoad();
         saveDefaultConfig();
         logMessage("<gradient:#A78BFA:#7F77DD>RefineryCore</gradient> <gray>is <yellow>●  loading<gray>...");
     }
@@ -39,7 +34,6 @@ public final class RefineryCorePlugin extends RefineryPlugin  {
         logMessage(" ");
 
         step(1, "Initializing crash handler", () -> {
-            this.crashHandler = CrashHandler.of(this);
             registerDefaultCrashHints();
         });
 
@@ -73,7 +67,14 @@ public final class RefineryCorePlugin extends RefineryPlugin  {
     private void step(int index, String label, @NonNull Runnable action) {
         logMessage("<dark_gray>[<gray>" + index + "/" + TOTAL_STEPS + "<dark_gray>] <gray>" + label + "<dark_gray>...");
         long start = System.currentTimeMillis();
-        action.run();
+        try {
+            action.run();
+        } catch (Throwable throwable) {
+            getCrashHandler().report(throwable, "during startup step: " + label);
+            if (throwable instanceof RuntimeException runtimeException) throw runtimeException;
+            if (throwable instanceof Error error) throw error;
+            throw new RuntimeException(throwable);
+        }
         long took = System.currentTimeMillis() - start;
         logMessage("<dark_gray>      <green>✔ <dark_gray>done <gray>(" + took + "ms)");
     }
@@ -88,7 +89,7 @@ public final class RefineryCorePlugin extends RefineryPlugin  {
      * {@code RefineryCorePlugin.getInstance().getCrashHandler().hint(...)}.
      */
     private void registerDefaultCrashHints() {
-        CrashHints.init(crashHandler);
+        CrashHints.init(getCrashHandler());
     }
 
     // No need to override the reload method as it reloads automatically if it knows this class is a JavaPlugin extended class.
