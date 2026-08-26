@@ -8,6 +8,7 @@ import xyz.refineryteam.refinerycore.api.command.CommandRegistry;
 import xyz.refineryteam.refinerycore.api.minimessage.EasyMiniMessage;
 import xyz.refineryteam.refinerycore.api.version.ServerImplementation;
 import xyz.refineryteam.refinerycore.api.version.ServerImplementations;
+import xyz.refineryteam.refinerycore.api.version.ServerSoftware;
 
 import java.util.Collections;
 import java.util.Map;
@@ -71,5 +72,12 @@ public interface RefineryPluginImplementation {
      */
     default ServerImplementation getServerImplementation() {
         return ServerImplementations.current();
+    }
+
+    /**
+     * @return the detected Bukkit-compatible server software
+     */
+    default ServerSoftware getServerSoftware() {
+        return ServerSoftware.current();
     }
 }
