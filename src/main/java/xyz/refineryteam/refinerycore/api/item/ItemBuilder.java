@@ -139,6 +139,61 @@ public final class ItemBuilder {
         });
     }
 
+    /**
+     * Applies a raw Base64 texture value (the "value" field from a
+     * gameprofile, as used by head databases and /give skull syntax).
+     * Unlike {@link #skullTexture(String)} this does not wrap the input —
+     * pass exactly what your source provides.
+     */
+    public ItemBuilder skullRawTexture(@NonNull String base64Texture) {
+        return skullMeta(skullMeta -> {
+            PlayerProfile profile = Bukkit.createProfile(UUID.randomUUID());
+            profile.getProperties().add(new com.destroystokyo.paper.profile.ProfileProperty(
+                "textures", base64Texture));
+            skullMeta.setPlayerProfile(profile);
+        });
+    }
+
+    /**
+     * Adds an enchantment glow without any visible enchantment lore.
+     * Distinct from {@link #glint()} in that it works even when the item
+     * already has flags applied.
+     */
+    public ItemBuilder glow() {
+        meta(meta -> meta.setEnchantmentGlintOverride(true));
+        return this;
+    }
+
+    /**
+     * Explicitly disables the enchantment glint, even if enchanted.
+     */
+    public ItemBuilder noGlow() {
+        meta(meta -> meta.setEnchantmentGlintOverride(false));
+        return this;
+    }
+
+    /**
+     * Replaces all lore with MiniMessage-formatted lines (convenience
+     * overload of {@link #lore(List)} for string lists, e.g. straight from
+     * a config section).
+     */
+    public ItemBuilder loreStrings(@NonNull List<String> lines) {
+        return meta(meta -> meta.lore(
+            lines.stream().map(EasyMiniMessage::format).toList()
+        ));
+    }
+
+    /**
+     * Inserts one MiniMessage line at a specific lore position.
+     */
+    public ItemBuilder insertLore(int index, @NonNull String line) {
+        return meta(meta -> {
+            List<Component> existing = meta.lore() != null ? new java.util.ArrayList<>(meta.lore()) : new java.util.ArrayList<>();
+            existing.add(Math.min(index, existing.size()), EasyMiniMessage.format(line));
+            meta.lore(existing);
+        });
+    }
+
     public <M extends ItemMeta> ItemBuilder specificMeta(@NonNull Class<M> type, @NonNull Consumer<M> consumer) {
         ItemMeta meta = stack.getItemMeta();
         if (meta == null || !type.isInstance(meta)) return this;
