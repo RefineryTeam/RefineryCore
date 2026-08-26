@@ -1,4 +1,4 @@
-[![Version](https://repository.reaudacity.online/api/badge/latest/releases/xyz/refineryteam/refinerycore/?color=40c14a&name=RefineryCore&prefix=v)](https://modrinth.com/projects/refinerycore)
+[![Version](https://repository.reaudacity.online/api/badge/latest/releases/xyz/refineryteam/refinerycore/?color=40c14a&name=RefineryCore&prefix=v)](https://modrinth.com/plugins/refinerycore)
 [![Build](https://github.com/RefineryTeam/RefineryCore/actions/workflows/build.yml/badge.svg)](https://github.com/RefineryTeam/RefineryCore/actions/workflows/build.yml)
 [![Publish](https://github.com/RefineryTeam/RefineryCore/actions/workflows/publish.yml/badge.svg)](https://github.com/RefineryTeam/RefineryCore/actions/workflows/publish.yml)
 
