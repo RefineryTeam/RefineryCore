@@ -37,18 +37,51 @@ public final class CommandExecutorBridge implements CommandExecutor, TabComplete
         scan();
     }
 
+    /**
+     * Walks the full class hierarchy so {@code @Subcommand} / {@code @DefaultHandler}
+     * methods declared in abstract base classes are picked up too.
+     */
     private void scan() {
-        for (Method method : instance.getClass().getDeclaredMethods()) {
-            method.setAccessible(true);
+        for (Class<?> clazz = instance.getClass(); clazz != null && clazz != Object.class; clazz = clazz.getSuperclass()) {
+            for (Method method : clazz.getDeclaredMethods()) {
+                method.setAccessible(true);
 
-            if (method.isAnnotationPresent(Subcommand.class)) {
-                Subcommand annotation = method.getAnnotation(Subcommand.class);
-                subcommandMap.put(annotation.value().toLowerCase(), method);
-            }
+                if (method.isAnnotationPresent(Subcommand.class)) {
+                    Subcommand annotation = method.getAnnotation(Subcommand.class);
+                    String key = annotation.value().toLowerCase();
+                    Method existing = subcommandMap.put(key, method);
+                    if (existing != null) {
+                        throw new IllegalStateException("Duplicate @Subcommand(\"" + annotation.value() + "\") in "
+                                + instance.getClass().getName() + ": " + existing.getName() + " and " + method.getName());
+                    }
+                    validateHandlerSignature(method, "Subcommand \"" + annotation.value() + "\"");
+                }
 
-            if (method.isAnnotationPresent(DefaultHandler.class)) {
-                defaultHandler = method;
+                if (method.isAnnotationPresent(DefaultHandler.class)) {
+                    if (defaultHandler != null && defaultHandler != method) {
+                        throw new IllegalStateException("Multiple @DefaultHandler methods in "
+                                + instance.getClass().getName() + ": " + defaultHandler.getName()
+                                + " and " + method.getName());
+                    }
+                    validateHandlerSignature(method, "@DefaultHandler");
+                    defaultHandler = method;
+                }
             }
+        }
+    }
+
+    /**
+     * Rejects handler methods with unsupported signatures at registration time
+     * instead of silently doing nothing at dispatch time.
+     */
+    private static void validateHandlerSignature(Method method, String what) {
+        Class<?>[] params = method.getParameterTypes();
+        boolean valid = params.length == 0
+                || (params.length == 1 && params[0] == CommandContext.class);
+        if (!valid) {
+            throw new IllegalStateException(what + " method " + method.getName() + " in "
+                    + method.getDeclaringClass().getName()
+                    + " must take no parameters or a single CommandContext parameter.");
         }
     }
 
@@ -62,7 +95,9 @@ public final class CommandExecutorBridge implements CommandExecutor, TabComplete
             return true;
         }
 
-        if (args.length > 0 && args[0].equalsIgnoreCase("help")) {
+        // Only intercept "help" if no explicit @Subcommand("help") exists —
+        // an explicitly declared help subcommand takes precedence.
+        if (args.length > 0 && args[0].equalsIgnoreCase("help") && !subcommandMap.containsKey("help")) {
             instance.onHelp(context);
             return true;
         }
@@ -136,9 +171,15 @@ public final class CommandExecutorBridge implements CommandExecutor, TabComplete
                 method.invoke(instance);
             } else if (params.length == 1 && params[0] == CommandContext.class) {
                 method.invoke(instance, context);
+            } else {
+                // Unreachable — signatures are validated in scan().
+                throw new IllegalStateException("Unsupported handler signature: " + method.getName());
             }
-        } catch (Exception e) {
+        } catch (IllegalAccessException e) {
             throw new RuntimeException("Failed to dispatch command method: " + method.getName(), e);
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            throw new RuntimeException("Command handler " + method.getName() + " threw an exception", cause);
         }
     }
 

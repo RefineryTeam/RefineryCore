@@ -71,11 +71,33 @@ public final class CooldownManager {
      * Attempts to start the cooldown only if the subject isn't already on
      * one. Returns {@code true} if the cooldown was applied (i.e., the
      * action should proceed), {@code false} if it's still on cooldown.
+     * <p>
+     * Atomic: uses a single {@code compute} so two concurrent callers can
+     * never both pass the check.
      */
     public boolean tryAcquire(@NonNull String namespace, @NonNull String key, @NonNull UUID subject, @NonNull Duration duration) {
-        if (isOnCooldown(namespace, key, subject)) return false;
-        set(namespace, key, subject, duration);
-        return true;
+        String id = id(namespace, key, subject);
+        long now = System.currentTimeMillis();
+        long newExpiry = now + duration.toMillis();
+
+        boolean[] acquired = {false};
+        expiries.compute(id, (k, existing) -> {
+            if (existing != null && now < existing) return existing; // still on cooldown
+            acquired[0] = true;
+            return newExpiry;
+        });
+        return acquired[0];
+    }
+
+    /**
+     * Removes every expired entry. Expired keys are otherwise only cleaned
+     * lazily when the same key is queried again; call this periodically
+     * (e.g. from a slow repeating task) to avoid unbounded growth from
+     * one-shot cooldowns that are never re-checked.
+     */
+    public void purgeExpired() {
+        long now = System.currentTimeMillis();
+        expiries.values().removeIf(expiry -> now >= expiry);
     }
 
     @Contract(pure = true)

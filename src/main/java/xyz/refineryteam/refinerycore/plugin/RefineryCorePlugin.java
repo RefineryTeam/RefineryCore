@@ -48,6 +48,7 @@ public final class RefineryCorePlugin extends JavaPlugin implements RefineryPlug
     @Override
     public void onDisable() {
         logMessage("<dark_gray>→ <gray>Shutting down RefineryCore...");
+        getCommandRegistry().unregisterAll();
         logMessage("<gradient:#A78BFA:#7F77DD>RefineryCore</gradient> <gray>has been <red>disabled<gray>.");
         instance = null;
     }

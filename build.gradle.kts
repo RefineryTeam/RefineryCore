@@ -20,6 +20,8 @@ dependencies {
 
     compileOnly("org.mariadb.jdbc:mariadb-java-client:3.5.3")
     compileOnly("org.postgresql:postgresql:42.7.7")
+    compileOnly("org.xerial:sqlite-jdbc:3.50.3.0")
+    compileOnly("com.h2database:h2:2.3.232")
 
     annotationProcessor("org.projectlombok:lombok:1.18.46")
     compileOnly("org.projectlombok:lombok:1.18.46")
@@ -41,7 +43,9 @@ bukkitPluginYaml {
     libraries.addAll(
         "com.zaxxer:HikariCP:7.0.2",
         "org.mariadb.jdbc:mariadb-java-client:3.5.3",
-        "org.postgresql:postgresql:42.7.7"
+        "org.postgresql:postgresql:42.7.7",
+        "org.xerial:sqlite-jdbc:3.50.3.0",
+        "com.h2database:h2:2.3.232"
     )
 }
 

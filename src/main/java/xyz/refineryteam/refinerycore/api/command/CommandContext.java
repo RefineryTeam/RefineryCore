@@ -80,8 +80,18 @@ public final class CommandContext {
         });
     }
 
+    /**
+     * Parses a boolean argument. Only "true"/"yes" and "false"/"no"
+     * (case-insensitive) are accepted — anything else yields
+     * {@link Optional#empty()} so callers can distinguish "not provided /
+     * invalid" from an actual {@code false}.
+     */
     public Optional<Boolean> argBoolean(int index) {
-        return arg(index).map(s -> s.equalsIgnoreCase("true") || s.equalsIgnoreCase("yes"));
+        return arg(index).flatMap(s -> {
+            if (s.equalsIgnoreCase("true") || s.equalsIgnoreCase("yes")) return Optional.of(true);
+            if (s.equalsIgnoreCase("false") || s.equalsIgnoreCase("no")) return Optional.of(false);
+            return Optional.empty();
+        });
     }
 
     public <E extends Enum<E>> Optional<E> argEnum(int index, Class<E> type) {

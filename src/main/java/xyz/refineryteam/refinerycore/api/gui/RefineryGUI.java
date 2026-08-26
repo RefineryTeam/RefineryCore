@@ -33,6 +33,8 @@ public abstract class RefineryGUI implements InventoryHolder {
     @Getter
     private Inventory inventory;
 
+    private volatile boolean destroyed = false;
+
     private final Map<Integer, ItemStack> itemMap = new HashMap<>();
     private final Map<Integer, GUIClickHandler> clickMap = new HashMap<>();
 
@@ -124,6 +126,7 @@ public abstract class RefineryGUI implements InventoryHolder {
     public boolean cancelClicks() { return true; }
 
     public void handleClick(Player player, @NonNull InventoryClickEvent event) {
+        if (destroyed) return;
         int slot = event.getRawSlot();
         if (slot < 0 || slot >= inventory.getSize()) return;
         GUIClickHandler handler = clickMap.get(slot);
@@ -131,6 +134,7 @@ public abstract class RefineryGUI implements InventoryHolder {
     }
 
     public RefineryGUI setItem(int slot, @Nullable ItemStack item, @Nullable GUIClickHandler handler) {
+        if (destroyed) return this;
         if (item != null) itemMap.put(slot, item);
         else itemMap.remove(slot);
         if (handler != null) clickMap.put(slot, handler);
@@ -148,6 +152,7 @@ public abstract class RefineryGUI implements InventoryHolder {
     }
 
     public void refresh(Player player) {
+        if (destroyed) return;
         initialize(player);
     }
 
@@ -156,11 +161,23 @@ public abstract class RefineryGUI implements InventoryHolder {
     }
 
     public void destroy() {
+        if (destroyed) return;
+        destroyed = true;
         onDestroy();
         new ArrayList<>(inventory.getViewers()).forEach(HumanEntity::closeInventory);
         itemMap.clear();
         clickMap.clear();
-        inventory = null;
+        // Keep the inventory reference: Bukkit may still deliver events for it,
+        // and InventoryHolder#getInventory() must not return null. The
+        // destroyed flag guards all post-destroy access instead.
+    }
+
+    /**
+     * @return true once {@link #destroy()} has been called. Events and
+     * refreshes targeting a destroyed GUI are ignored.
+     */
+    public boolean isDestroyed() {
+        return destroyed;
     }
 
     @FunctionalInterface

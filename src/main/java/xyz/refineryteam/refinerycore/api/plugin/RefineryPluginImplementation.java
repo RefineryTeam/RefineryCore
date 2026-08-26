@@ -24,7 +24,13 @@ public interface RefineryPluginImplementation {
             plugin.reloadConfig();
     }
 
-    Map<Class<?>, CommandRegistry> REGISTRIES = new ConcurrentHashMap<>();
+    /**
+     * Weakly-keyed so entries are dropped when a plugin instance is
+     * garbage-collected (e.g. after /reload), preventing classloader leaks.
+     * Wrapped in a synchronized view — WeakHashMap is not thread-safe.
+     */
+    Map<JavaPlugin, CommandRegistry> REGISTRIES =
+            java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
 
     default ConsoleCommandSender getConsoleSender() {
         return Bukkit.getConsoleSender();
@@ -38,8 +44,19 @@ public interface RefineryPluginImplementation {
         return Bukkit.getPluginManager();
     }
 
+    /**
+     * Returns the {@link CommandRegistry} for this plugin instance.
+     * <p>
+     * The map uses <em>weak</em> keys: once a plugin is disabled, reloaded,
+     * and garbage-collected, its entry disappears automatically — no
+     * classloader leak, unlike a plain static map keyed by {@code Class}.
+     */
     default CommandRegistry getCommandRegistry() {
-        return REGISTRIES.computeIfAbsent(getClass(), k -> new CommandRegistry((JavaPlugin) this));
+        if (!(this instanceof org.bukkit.plugin.java.JavaPlugin javaPlugin)) {
+            throw new IllegalStateException(getClass().getName()
+                    + " must extend JavaPlugin to use getCommandRegistry().");
+        }
+        return REGISTRIES.computeIfAbsent(javaPlugin, CommandRegistry::new);
     }
 
     /**

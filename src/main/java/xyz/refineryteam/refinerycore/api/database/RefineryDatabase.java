@@ -146,7 +146,7 @@ public final class RefineryDatabase {
 
     @Contract("_, _ -> new")
     public @NonNull CompletableFuture<Void> executeAsync(@NonNull String sql, @NonNull Consumer<PreparedStatement> prepare) {
-        return CompletableFuture.runAsync(() -> execute(sql, prepare));
+        return CompletableFuture.runAsync(() -> execute(sql, prepare), DB_EXECUTOR);
     }
 
     public <T> @NonNull List<T> query(@NonNull String sql, @NonNull Consumer<PreparedStatement> prepare, @NonNull Function<ResultSet, T> mapper) {
@@ -164,8 +164,20 @@ public final class RefineryDatabase {
 
     @Contract("_, _, _ -> new")
     public <T> @NonNull CompletableFuture<List<T>> queryAsync(@NonNull String sql, @NonNull Consumer<PreparedStatement> prepare, @NonNull Function<ResultSet, T> mapper) {
-        return CompletableFuture.supplyAsync(() -> query(sql, prepare, mapper));
+        return CompletableFuture.supplyAsync(() -> query(sql, prepare, mapper), DB_EXECUTOR);
     }
+
+    /**
+     * Blocking JDBC work must not run on the common ForkJoinPool — a few
+     * slow queries would starve every other CompletableFuture user in the
+     * JVM. A small dedicated pool keeps DB calls isolated and ordered.
+     */
+    private static final java.util.concurrent.ExecutorService DB_EXECUTOR =
+            java.util.concurrent.Executors.newFixedThreadPool(4, r -> {
+                Thread t = new Thread(r, "RefineryCore-DB");
+                t.setDaemon(true);
+                return t;
+            });
 
     public void close() {
         if (source != null && !source.isClosed()) source.close();

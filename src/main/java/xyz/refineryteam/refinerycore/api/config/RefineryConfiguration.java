@@ -118,10 +118,13 @@ public abstract class RefineryConfiguration {
                                     ? new java.util.HashMap<>(map)
                                     : new java.util.HashMap<>());
                         } else {
-                            field.set(instance, castValue(field.getType(), value));
+                            field.set(instance, castValue(path, field.getType(), value));
                         }
                     } catch (IllegalAccessException e) {
                         plugin.getLogger().warning("Could not set field for path: " + path);
+                    } catch (IllegalArgumentException e) {
+                        plugin.getLogger().warning("Incompatible value for '" + path + "': " + e.getMessage()
+                                + " — keeping the current default.");
                     }
                 }
             }
@@ -139,13 +142,25 @@ public abstract class RefineryConfiguration {
         }
     }
 
-    private Object castValue(Class<?> type, Object value) {
+    /**
+     * Converts a raw YAML value to the field's type. Throws
+     * {@link IllegalArgumentException} (not ClassCastException) with a
+     * path-aware message so bad config values are diagnosable.
+     */
+    private Object castValue(String path, Class<?> type, Object value) {
         if (value == null) return null;
-        if (type == int.class || type == Integer.class) return ((Number) value).intValue();
-        if (type == long.class || type == Long.class) return ((Number) value).longValue();
-        if (type == double.class || type == Double.class) return ((Number) value).doubleValue();
-        if (type == float.class || type == Float.class) return ((Number) value).floatValue();
-        if (type == boolean.class || type == Boolean.class) return value;
+        try {
+            if (type == int.class || type == Integer.class) return ((Number) value).intValue();
+            if (type == long.class || type == Long.class) return ((Number) value).longValue();
+            if (type == double.class || type == Double.class) return ((Number) value).doubleValue();
+            if (type == float.class || type == Float.class) return ((Number) value).floatValue();
+        } catch (ClassCastException e) {
+            throw new IllegalArgumentException("expected a number but found '" + value + "' (" + value.getClass().getSimpleName() + ")");
+        }
+        if (type == boolean.class || type == Boolean.class) {
+            if (value instanceof Boolean b) return b;
+            throw new IllegalArgumentException("expected true/false but found '" + value + "'");
+        }
         if (type == String.class) return value.toString();
         return value;
     }

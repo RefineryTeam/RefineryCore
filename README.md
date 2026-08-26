@@ -60,7 +60,7 @@ dependencies {
 ## Requirements
 
 - Java 21+
-- Paper 1.21+
+- Paper 1.20+ (compiled against the 1.20.6 API; runs on any Paper build from 1.20 through the latest 1.21.x)
 
 ---
 

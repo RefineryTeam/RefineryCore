@@ -18,7 +18,7 @@ import java.util.function.Consumer;
 public final class PromptRegistry {
 
     private static final Map<UUID, PendingPrompt> PENDING = new ConcurrentHashMap<>();
-    private static volatile boolean installed = false;
+    private static volatile Plugin installedBy = null;
 
     private PromptRegistry() {
     }
@@ -27,11 +27,16 @@ public final class PromptRegistry {
      * Registers the shared listener that intercepts chat and quit events
      * for all {@code ChatPrompt}s. Safe to call multiple times (from
      * multiple plugins sharing this core) — only registers once per JVM.
+     * <p>
+     * If the plugin that originally registered the listener has since been
+     * disabled (its listener went with it), a later call re-registers the
+     * listener under the new caller so prompts keep working after reloads.
      */
     public static synchronized void install(@NonNull Plugin plugin) {
-        if (installed) return;
-        plugin.getServer().getPluginManager().registerEvents(new PromptListener(), plugin);
-        installed = true;
+        Plugin current = installedBy;
+        if (current != null && current.isEnabled()) return;
+        plugin.getServer().getPluginManager().registerEvents(new PromptListener(plugin), plugin);
+        installedBy = plugin;
     }
 
     public static void register(@NonNull UUID playerId, @NonNull PendingPrompt prompt) {

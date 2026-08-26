@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.logging.Level;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * Base {@link Repository} implementation shared by every entity type. Subclasses only need
  * to describe their table's shape (name, primary key column, extra columns) and how to
@@ -142,9 +144,24 @@ public abstract class AbstractRepository<T, ID> implements Repository<T, ID> {
             bindAll(stmt, entity);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            database.getPlugin().getLogger().log(Level.SEVERE, "Failed to save row in " + table, e);
+            // Propagate instead of returning as if the write succeeded —
+            // silent data loss is worse than a loud failure.
+            throw new IllegalStateException("Failed to save row in " + table, e);
         }
         return entity;
+    }
+
+    /**
+     * Same as {@link #save(Object)} but logs failures instead of throwing.
+     * Use for fire-and-forget writes where losing one row is acceptable.
+     */
+    public @Nullable T saveQuietly(@NonNull T entity) {
+        try {
+            return save(entity);
+        } catch (IllegalStateException e) {
+            database.getPlugin().getLogger().log(Level.SEVERE, e.getMessage(), e.getCause());
+            return null;
+        }
     }
 
     @Override

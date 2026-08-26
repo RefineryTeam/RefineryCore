@@ -2,7 +2,6 @@ package xyz.refineryteam.refinerycore.api.event;
 
 import org.jspecify.annotations.NonNull;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -89,8 +88,18 @@ public final class RefineryBus {
         UUID id = UUID.randomUUID();
         Subscription<T> subscription = new Subscription<>(id, type, handler, priority);
 
-        subscribers.computeIfAbsent(channel, k -> new CopyOnWriteArrayList<>()).add(subscription);
-        subscribers.get(channel).sort(Comparator.<Subscription<?>>comparingInt(Subscription::priority).reversed());
+        List<Subscription<?>> list = subscribers.computeIfAbsent(channel, k -> new CopyOnWriteArrayList<>());
+        // Insert in priority order instead of re-sorting the whole list on
+        // every subscribe. CopyOnWriteArrayList is safe for concurrent
+        // iteration during publish while we mutate it here.
+        synchronized (list) {
+            int insertAt = 0;
+            for (int i = 0; i < list.size(); i++) {
+                if (list.get(i).priority() >= priority) insertAt = i + 1;
+                else break;
+            }
+            list.add(insertAt, subscription);
+        }
 
         return id;
     }

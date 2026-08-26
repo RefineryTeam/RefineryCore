@@ -100,13 +100,9 @@ public final class ScoreboardManager {
      * Call from onDisable() to clean up every tracked board and task.
      */
     public void shutdown() {
-        for (UUID id : updaters.keySet()) {
-            BukkitTask task = updaters.remove(id);
-            if (task != null) task.cancel();
-        }
-        for (Scoreboard board : boards.values()) {
-            board.destroy();
-        }
+        updaters.values().forEach(BukkitTask::cancel);
+        updaters.clear();
+        boards.values().forEach(Scoreboard::destroy);
         boards.clear();
     }
 }

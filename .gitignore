@@ -2,3 +2,5 @@ run
 build
 .gradle
 .idea
+.github/agents
+.github/skills
