@@ -40,6 +40,7 @@ public final class Placeholders {
          * @param player the viewing player, or null for console/global contexts
          * @param args   anything after a colon in the placeholder body,
          *               e.g. {@code %myplugin_top:3%} → args = "3"; may be null
+         * @return the replacement text; must not be null (return "" instead)
          */
         @NonNull String resolve(@Nullable Player player, @Nullable String args);
     }
@@ -53,6 +54,10 @@ public final class Placeholders {
      * Registers a namespaced placeholder, e.g.
      * {@code register("economy", "balance", ...)} answers
      * {@code %economy_balance%}.
+     *
+     * @param namespace namespace prefix, lowercased internally
+     * @param name      placeholder name within the namespace
+     * @param resolver  produces the replacement value at render time
      */
     public static void register(@NonNull String namespace, @NonNull String name, @NonNull Resolver resolver) {
         RESOLVERS.put(new Key(namespace.toLowerCase(), name.toLowerCase()), resolver);
@@ -61,6 +66,9 @@ public final class Placeholders {
     /**
      * Registers an unnamespaced placeholder answering {@code %name%}.
      * Prefer the namespaced form to avoid collisions between plugins.
+     *
+     * @param name     placeholder name, lowercased internally
+     * @param resolver produces the replacement value at render time
      */
     public static void register(@NonNull String name, @NonNull Resolver resolver) {
         RESOLVERS.put(new Key("", name.toLowerCase()), resolver);
@@ -68,11 +76,19 @@ public final class Placeholders {
 
     /**
      * Removes a previously registered placeholder.
+     *
+     * @param namespace the namespace it was registered under
+     * @param name      the name it was registered under
      */
     public static void unregister(@NonNull String namespace, @NonNull String name) {
         RESOLVERS.remove(new Key(namespace.toLowerCase(), name.toLowerCase()));
     }
 
+    /**
+     * Removes a previously registered unnamespaced placeholder.
+     *
+     * @param name the name it was registered under
+     */
     public static void unregister(@NonNull String name) {
         RESOLVERS.remove(new Key("", name.toLowerCase()));
     }
@@ -81,6 +97,11 @@ public final class Placeholders {
      * Substitutes all known placeholders in {@code raw}, then parses the
      * result as MiniMessage. Unknown placeholders are left verbatim so
      * other systems (or PlaceholderAPI itself) can still handle them.
+     *
+     * @param raw    template string containing {@code %placeholder%} tokens
+     * @param player the viewing player passed to resolvers, or null for
+     *               console/global contexts
+     * @return the rendered component
      */
     public static net.kyori.adventure.text.@NonNull Component render(@NonNull String raw, @Nullable Player player) {
         return EasyMiniMessage.format(apply(raw, player));
@@ -91,6 +112,11 @@ public final class Placeholders {
      * without MiniMessage parsing. Useful when the result feeds another
      * component builder or a non-text destination (scoreboard lines,
      * Discord webhooks, etc).
+     *
+     * @param raw    template string containing {@code %placeholder%} tokens
+     * @param player the viewing player passed to resolvers, or null for
+     *               console/global contexts
+     * @return the substituted string
      */
     public static @NonNull String apply(@NonNull String raw, @Nullable Player player) {
         if (!raw.contains("%")) return raw;

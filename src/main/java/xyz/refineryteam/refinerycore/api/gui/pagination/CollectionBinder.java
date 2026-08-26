@@ -44,6 +44,13 @@ public final class CollectionBinder<T> {
     /**
      * Creates a binder around a live supplier and immediately pushes its
      * first snapshot into the GUI's page context.
+     *
+     * @param gui    the paginated GUI to feed
+     * @param source supplies a fresh copy of the items on each read;
+     *               return a new list, never a live view being mutated
+     * @param <T>    the element type
+     * @return a bound binder; call {@link #snapshot()} whenever the backing
+     *         data may have changed (e.g. at the top of {@code onInitialize})
      */
     public static <T> @NonNull CollectionBinder<T> bind(@NonNull PaginatedGUI<T> gui, @NonNull Supplier<List<T>> source) {
         CollectionBinder<T> binder = new CollectionBinder<>(source);
@@ -54,6 +61,10 @@ public final class CollectionBinder<T> {
     /**
      * Creates an unbound binder; call {@link #snapshot()} yourself wherever
      * it makes sense (e.g. inside {@code onInitialize}).
+     *
+     * @param source supplies a fresh copy of the items on each read
+     * @param <T>    the element type
+     * @return a new unbound binder
      */
     public static <T> @NonNull CollectionBinder<T> of(@NonNull Supplier<List<T>> source) {
         return new CollectionBinder<>(source);
@@ -62,6 +73,8 @@ public final class CollectionBinder<T> {
     /**
      * Re-reads the backing collection, notifies change listeners if the
      * snapshot differs from the previous one, and returns it.
+     *
+     * @return an immutable snapshot of the current backing collection
      */
     public @NonNull List<T> snapshot() {
         List<T> fresh = List.copyOf(source.get());
@@ -78,6 +91,9 @@ public final class CollectionBinder<T> {
     /**
      * Registers a listener fired by {@link #snapshot()} when the backing
      * collection has changed since the last read.
+     *
+     * @param listener receives the new snapshot on change
+     * @return this binder, for chaining
      */
     public @NonNull CollectionBinder<T> onChange(@NonNull Consumer<List<T>> listener) {
         listeners.add(listener);

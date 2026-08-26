@@ -1,6 +1,7 @@
 package xyz.refineryteam.refinerycore.api.http;
 
 import org.bukkit.plugin.java.JavaPlugin;
+import com.google.gson.JsonElement;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -55,12 +56,22 @@ public final class Http {
                 .build();
     }
 
+    /**
+     * Creates an HTTP client bound to the given plugin. Retry backoff is
+     * scheduled through the plugin's async scheduler.
+     *
+     * @param plugin the owning plugin
+     * @return a new client; call {@link #close()} from onDisable if desired
+     */
     public static @NonNull Http of(@NonNull JavaPlugin plugin) {
         return new Http(plugin);
     }
 
     /**
      * Starts building a GET request.
+     *
+     * @param url the absolute URL to request
+     * @return a request builder
      */
     public @NonNull Request get(@NonNull String url) {
         return new Request(this, "GET", url);
@@ -68,6 +79,9 @@ public final class Http {
 
     /**
      * Starts building a POST request.
+     *
+     * @param url the absolute URL to request
+     * @return a request builder
      */
     public @NonNull Request post(@NonNull String url) {
         return new Request(this, "POST", url);
@@ -75,6 +89,9 @@ public final class Http {
 
     /**
      * Starts building a PUT request.
+     *
+     * @param url the absolute URL to request
+     * @return a request builder
      */
     public @NonNull Request put(@NonNull String url) {
         return new Request(this, "PUT", url);
@@ -82,6 +99,9 @@ public final class Http {
 
     /**
      * Starts building a DELETE request.
+     *
+     * @param url the absolute URL to request
+     * @return a request builder
      */
     public @NonNull Request delete(@NonNull String url) {
         return new Request(this, "DELETE", url);
@@ -94,8 +114,6 @@ public final class Http {
     public void close() {
         client.close();
     }
-
-    // ------------------------------------------------------------------
 
     public static final class Request {
         private final Http parent;
@@ -113,6 +131,13 @@ public final class Http {
             this.url = url;
         }
 
+        /**
+         * Adds a request header.
+         *
+         * @param name  header name, e.g. {@code "Authorization"}
+         * @param value header value
+         * @return this builder
+         */
         public @NonNull Request header(@NonNull String name, @NonNull String value) {
             headers.put(name, value);
             return this;
@@ -120,6 +145,9 @@ public final class Http {
 
         /**
          * Sets a JSON body and Content-Type in one call.
+         *
+         * @param json the raw JSON string to send
+         * @return this builder
          */
         public @NonNull Request jsonBody(@NonNull String json) {
             this.body = json;
@@ -129,6 +157,10 @@ public final class Http {
 
         /**
          * Sets an arbitrary body with an explicit content type.
+         *
+         * @param body        the raw body string
+         * @param contentType MIME type, e.g. {@code "text/plain"}
+         * @return this builder
          */
         public @NonNull Request body(@NonNull String body, @NonNull String contentType) {
             this.body = body;
@@ -139,11 +171,14 @@ public final class Http {
         /**
          * Form-encoded convenience: builds
          * {@code key1=value1&key2=value2} with the matching content type.
+         *
+         * @param fields form fields; keys and values are URL-encoded
+         * @return this builder
          */
         public @NonNull Request formBody(@NonNull Map<String, String> fields) {
             StringBuilder out = new StringBuilder();
             fields.forEach((k, v) -> {
-                if (!out.isEmpty()) out.append('&');
+                if (out.length() > 0) out.append('&');
                 out.append(java.net.URLEncoder.encode(k, java.nio.charset.StandardCharsets.UTF_8))
                    .append('=')
                    .append(java.net.URLEncoder.encode(v, java.nio.charset.StandardCharsets.UTF_8));
@@ -154,6 +189,9 @@ public final class Http {
         /**
          * How many times to retry on IOException or 5xx before giving up.
          * Backoff is exponential: 500ms, 1s, 2s...
+         *
+         * @param retries number of retry attempts after the first try
+         * @return this builder
          */
         public @NonNull Request retries(int retries) {
             this.retries = Math.max(0, retries);
@@ -162,6 +200,9 @@ public final class Http {
 
         /**
          * Per-attempt timeout. Default 15 seconds.
+         *
+         * @param timeout maximum time for a single attempt
+         * @return this builder
          */
         public @NonNull Request timeout(@NonNull Duration timeout) {
             this.timeout = timeout;
@@ -172,6 +213,8 @@ public final class Http {
          * Executes asynchronously, returning the final response after any
          * retries. Never blocks the calling thread; never throws — errors
          * arrive as a completed-exceptionally future.
+         *
+         * @return future completing with the final {@link Response}
          */
         public @NonNull CompletableFuture<Response> executeAsync() {
             HttpRequest.Builder builder = HttpRequest.newBuilder()
@@ -193,6 +236,9 @@ public final class Http {
         /**
          * Executes synchronously on the calling thread. Only use off the
          * main thread.
+         *
+         * @return the final {@link Response}; transport failures yield a
+         *         response with status -1 and the error set
          */
         public @NonNull Response execute() {
             try {
@@ -255,11 +301,13 @@ public final class Http {
         }
 
         /**
-         * Parses the body as JSON via the bundled Gson... actually Paper
-         * ships gson — returns it raw so callers can use their preferred
-         * parser without this class taking a dependency.
+         * Parses the body as JSON. Paper ships Gson, so this works without
+         * any extra dependency.
+         *
+         * @return parsed JSON element, or null when the response is not OK
+         *         or the body isn't valid JSON
          */
-        public com.google.gson.@Nullable JsonElement json() {
+        public @Nullable JsonElement json() {
             if (!ok()) return null;
             try {
                 return com.google.gson.JsonParser.parseString(body);
@@ -271,6 +319,8 @@ public final class Http {
         /**
          * The error that prevented completion, or null if the request went
          * through (even with a non-2xx status).
+         *
+         * @return the transport-level error, or null
          */
         public @Nullable Throwable error() {
             return error;

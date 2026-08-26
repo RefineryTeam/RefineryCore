@@ -82,6 +82,13 @@ public final class PersistentCooldownManager {
     // In-memory mirror: only entries that have not expired yet.
     private final CooldownManager cache = new CooldownManager();
 
+    /**
+     * Creates a manager backed by the given database. Call
+     * {@link #createTable()} and {@link #loadAll()} before first use.
+     *
+     * @param plugin   the owning plugin; used for async persistence tasks
+     * @param database the database storing cooldown rows
+     */
     public PersistentCooldownManager(@NonNull JavaPlugin plugin, @NonNull RefineryDatabase database) {
         this.plugin = plugin;
         this.repository = new EntryRepository(database);
@@ -111,20 +118,43 @@ public final class PersistentCooldownManager {
         }
     }
 
+    /**
+     * @param namespace the feature namespace the cooldown was created under
+     * @param key       the cooldown key
+     * @param subject   the subject's UUID
+     * @return true if an unexpired cooldown exists for this (namespace, key, subject)
+     */
     public boolean isOnCooldown(@NonNull String namespace, @NonNull String key, @NonNull UUID subject) {
         return cache.isOnCooldown(namespace, key, subject);
     }
 
+    /**
+     * @param namespace the feature namespace
+     * @param key       the cooldown key
+     * @param subject   the subject's UUID
+     * @return seconds left on the cooldown, or 0 if none is active
+     */
     public long remainingSeconds(@NonNull String namespace, @NonNull String key, @NonNull UUID subject) {
         return cache.remainingSeconds(namespace, key, subject);
     }
 
+    /**
+     * @param namespace the feature namespace
+     * @param key       the cooldown key
+     * @param subject   the subject's UUID
+     * @return milliseconds left on the cooldown, or 0 if none is active
+     */
     public long remainingMillis(@NonNull String namespace, @NonNull String key, @NonNull UUID subject) {
         return cache.remainingMillis(namespace, key, subject);
     }
 
     /**
      * Sets a cooldown and persists it asynchronously.
+     *
+     * @param namespace the feature namespace, e.g. {@code "kits"}
+     * @param key       the cooldown key, e.g. {@code "starter"}
+     * @param subject   the subject's UUID
+     * @param duration  how long the cooldown lasts
      */
     public void set(@NonNull String namespace, @NonNull String key, @NonNull UUID subject, @NonNull Duration duration) {
         cache.set(namespace, key, subject, duration);
@@ -135,6 +165,13 @@ public final class PersistentCooldownManager {
     /**
      * Atomically starts the cooldown unless one is already active.
      * Persists asynchronously on success.
+     *
+     * @param namespace the feature namespace
+     * @param key       the cooldown key
+     * @param subject   the subject's UUID
+     * @param duration  how long the cooldown will last if acquired
+     * @return true if the cooldown was newly applied (action may proceed),
+     *         false if one was already active
      */
     public boolean tryAcquire(@NonNull String namespace, @NonNull String key, @NonNull UUID subject, @NonNull Duration duration) {
         if (!cache.tryAcquire(namespace, key, subject, duration)) return false;
@@ -145,6 +182,10 @@ public final class PersistentCooldownManager {
 
     /**
      * Clears a cooldown from memory and deletes its row asynchronously.
+     *
+     * @param namespace the feature namespace
+     * @param key       the cooldown key
+     * @param subject   the subject's UUID
      */
     public void clear(@NonNull String namespace, @NonNull String key, @NonNull UUID subject) {
         cache.clear(namespace, key, subject);
@@ -154,6 +195,8 @@ public final class PersistentCooldownManager {
 
     /**
      * Clears every cooldown for a subject (e.g. on staff pardon).
+     *
+     * @param subject the subject whose cooldowns are all removed
      */
     public void clearAll(@NonNull UUID subject) {
         List<Entry> doomed = new ArrayList<>();

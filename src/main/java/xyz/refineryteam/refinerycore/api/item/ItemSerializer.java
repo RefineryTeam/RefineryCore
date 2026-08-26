@@ -30,6 +30,9 @@ public final class ItemSerializer {
 
     /**
      * Encodes a single stack ("null" safe — returns an empty string).
+     *
+     * @param stack the item to encode, or null
+     * @return Base64 string, or "" for null/empty stacks
      */
     public static @NonNull String encode(@Nullable ItemStack stack) {
         if (stack == null || stack.isEmpty()) return "";
@@ -38,6 +41,10 @@ public final class ItemSerializer {
 
     /**
      * Decodes a single stack; empty/blank input yields null.
+     *
+     * @param base64 string produced by {@link #encode(ItemStack)}
+     * @return the decoded stack, or null for blank input
+     * @throws IllegalArgumentException when the data is corrupt
      */
     public static @Nullable ItemStack decode(@Nullable String base64) {
         if (base64 == null || base64.isBlank()) return null;
@@ -51,6 +58,9 @@ public final class ItemSerializer {
     /**
      * Encodes an array of stacks (e.g. inventory contents). Null/empty
      * slots are preserved as empty segments.
+     *
+     * @param stacks the items to encode, or null
+     * @return semicolon-separated Base64 segments, or "" for null/empty input
      */
     public static @NonNull String encodeArray(@Nullable ItemStack @Nullable [] stacks) {
         if (stacks == null || stacks.length == 0) return "";
@@ -66,6 +76,9 @@ public final class ItemSerializer {
     /**
      * Decodes an array produced by {@link #encodeArray(ItemStack[])}.
      * Empty segments become null entries.
+     *
+     * @param data string produced by {@link #encodeArray(ItemStack[])}
+     * @return the decoded array; empty input yields an empty array
      */
     public static ItemStack @NonNull [] decodeArray(@Nullable String data) {
         if (data == null || data.isBlank()) return new ItemStack[0];

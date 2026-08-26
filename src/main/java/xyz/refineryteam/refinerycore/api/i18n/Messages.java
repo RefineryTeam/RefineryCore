@@ -5,6 +5,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import xyz.refineryteam.refinerycore.api.minimessage.EasyMiniMessage;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -41,7 +43,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class Messages {
 
-    private final org.bukkit.plugin.Plugin plugin;
+    private final Plugin plugin;
     private final String folderName;
     private volatile Locale defaultLocale = Locale.US;
     private final Map<String, YamlConfiguration> bundles = new ConcurrentHashMap<>();
@@ -55,15 +57,23 @@ public final class Messages {
     /**
      * Creates a registry reading from {@code lang/} inside the plugin's
      * data folder (the conventional location).
+     *
+     * @param plugin the plugin whose data folder holds the lang files
+     * @return a new empty registry; call {@link #load()} to read the files
      */
-    public static @NonNull Messages of(org.bukkit.plugin.Plugin plugin) {
+    public static @NonNull Messages of(@NonNull Plugin plugin) {
         return new Messages(plugin, "lang");
     }
 
     /**
      * Creates a registry reading from a custom sub-folder.
+     *
+     * @param plugin the plugin whose data folder holds the lang files
+     * @param folder sub-folder name relative to the data folder,
+     *               e.g. {@code "translations"}
+     * @return a new empty registry; call {@link #load()} to read the files
      */
-    public static @NonNull Messages of(org.bukkit.plugin.Plugin plugin, @NonNull String folder) {
+    public static @NonNull Messages of(@NonNull Plugin plugin, @NonNull String folder) {
         return new Messages(plugin, folder);
     }
 
@@ -88,6 +98,8 @@ public final class Messages {
 
     /**
      * Sets the fallback locale used when a player's locale has no bundle.
+     *
+     * @param locale the default locale (must match a loaded bundle code)
      */
     public void setDefaultLocale(@NonNull Locale locale) {
         this.defaultLocale = locale;
@@ -95,12 +107,21 @@ public final class Messages {
 
     /**
      * Overrides the locale for one player (e.g. from /language command).
+     *
+     * @param playerId the player whose locale is overridden
+     * @param locale   the locale to use for this player
      */
-    public void setLocale(java.util.UUID playerId, @NonNull Locale locale) {
+    public void setLocale(@NonNull UUID playerId, @NonNull Locale locale) {
         overrides.put(playerId, locale);
     }
 
-    public void clearLocale(java.util.UUID playerId) {
+    /**
+     * Removes a player's locale override; the client-reported locale is
+     * used again.
+     *
+     * @param playerId the player whose override is removed
+     */
+    public void clearLocale(@NonNull UUID playerId) {
         overrides.remove(playerId);
     }
 
@@ -124,6 +145,11 @@ public final class Messages {
      * Resolves and formats a message as MiniMessage. Resolution order:
      * player's bundle → default bundle → raw key. A {@code prefix} entry
      * is prepended when using the send-family with prefix enabled.
+     *
+     * @param player    the viewing player (selects the bundle), or null for default
+     * @param key       dotted config path, e.g. {@code "errors.no-permission"}
+     * @param resolvers MiniMessage placeholder resolvers
+     * @return the formatted component
      */
     public @NonNull Component component(@Nullable Player player, @NonNull String key, @NonNull TagResolver... resolvers) {
         String raw = resolveRaw(player, key);
@@ -133,6 +159,10 @@ public final class Messages {
     /**
      * Sends a message to an audience. For players the per-locale bundle is
      * used; console gets the default locale.
+     *
+     * @param audience  who receives the message; null is ignored
+     * @param key       dotted config path of the message
+     * @param resolvers MiniMessage placeholder resolvers
      */
     public void send(@Nullable Audience audience, @NonNull String key, @NonNull TagResolver... resolvers) {
         if (audience == null) return;
@@ -143,6 +173,10 @@ public final class Messages {
     /**
      * Sends a message prefixed with the bundle's {@code prefix} entry
      * (if present).
+     *
+     * @param audience  who receives the message; null is ignored
+     * @param key       dotted config path of the message
+     * @param resolvers MiniMessage placeholder resolvers
      */
     public void sendPrefixed(@Nullable Audience audience, @NonNull String key, @NonNull TagResolver... resolvers) {
         if (audience == null) return;
@@ -156,6 +190,10 @@ public final class Messages {
     /**
      * Resolves a raw string without MiniMessage parsing — for places that
      * need plain text (scoreboard lines, Discord, etc).
+     *
+     * @param player the viewing player (selects the bundle), or null for default
+     * @param key    dotted config path of the message
+     * @return the untranslated-format string; the key itself if not found
      */
     public @NonNull String raw(@Nullable Player player, @NonNull String key) {
         return resolveRaw(player, key);
@@ -177,8 +215,6 @@ public final class Messages {
     public @NonNull Set<String> availableLocales() {
         return Set.copyOf(bundles.keySet());
     }
-
-    // ---- internals ------------------------------------------------------
 
     private @NonNull String resolveRaw(@Nullable Player player, @NonNull String key) {
         YamlConfiguration bundle = bundleFor(player);

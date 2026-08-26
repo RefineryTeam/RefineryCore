@@ -57,6 +57,14 @@ public final class ListPickerGUI<T> extends PaginatedGUI<T> {
 
     /**
      * Creates a picker with the default 3-row content area (21 items per page).
+     *
+     * @param title    MiniMessage title of the inventory
+     * @param items    the elements to pick from; paginated automatically
+     * @param renderer renders each element as its clickable {@link ItemStack}
+     * @param onSelect invoked when the player clicks an element's item;
+     *                 the GUI is closed first
+     * @param <T>      the element type being picked from
+     * @return a new picker GUI; open it with {@code RefineryGUI.open(player, gui)}
      */
     public static <T> @NonNull ListPickerGUI<T> of(@NonNull String title, @NonNull List<T> items,
                                                    @NonNull Function<T, ItemStack> renderer,
@@ -67,6 +75,16 @@ public final class ListPickerGUI<T> extends PaginatedGUI<T> {
     /**
      * Creates a picker with a custom content slot layout. The page size is
      * derived from the number of slots.
+     *
+     * @param title        MiniMessage title of the inventory
+     * @param items        the elements to pick from; paginated automatically
+     * @param renderer     renders each element as its clickable {@link ItemStack}
+     * @param onSelect     invoked when the player clicks an element's item;
+     *                     the GUI is closed first
+     * @param contentSlots the inventory slots used for one page of items;
+     *                     navigation buttons go in the bottom row corners
+     * @param <T>          the element type being picked from
+     * @return a new picker GUI; open it with {@code RefineryGUI.open(player, gui)}
      */
     public static <T> @NonNull ListPickerGUI<T> of(@NonNull String title, @NonNull List<T> items,
                                                    @NonNull Function<T, ItemStack> renderer,

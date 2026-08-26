@@ -49,15 +49,20 @@ public final class TaskChain<T> {
 
     /**
      * Starts a new chain rooted on the given plugin.
+     *
+     * @param plugin the plugin owning all scheduled steps
+     * @return a new empty chain; the flowing value starts as null
      */
     public static @NonNull TaskChain<Void> of(@NonNull JavaPlugin plugin) {
         return new TaskChain<>(plugin, null, ctx -> {});
     }
 
-    // ---- step builders -------------------------------------------------
-
     /**
      * Runs a supplier on the async scheduler and passes its result onward.
+     *
+     * @param work the async computation
+     * @param <R>  the result type flowing to the next step
+     * @return a new chain link; call further steps or {@link #execute()}
      */
     public <R> @NonNull TaskChain<R> async(@NonNull Supplier<R> work) {
         return new TaskChain<>(plugin, root, ctx -> {
@@ -69,6 +74,10 @@ public final class TaskChain<T> {
 
     /**
      * Runs a transformation on the global region (main) thread.
+     *
+     * @param work the transformation applied on the main thread
+     * @param <R>  the result type flowing to the next step
+     * @return a new chain link
      */
     public <R> @NonNull TaskChain<R> sync(@NonNull Function<T, R> work) {
         return new TaskChain<>(plugin, root, ctx -> {
@@ -83,6 +92,9 @@ public final class TaskChain<T> {
     /**
      * Runs a side-effecting step on the main thread without changing the
      * flowing value.
+     *
+     * @param work the action applied on the main thread
+     * @return a new chain link with the same flowing value
      */
     public @NonNull TaskChain<T> syncConsume(@NonNull Consumer<T> work) {
         return sync(v -> { work.accept(v); return v; });
@@ -91,6 +103,9 @@ public final class TaskChain<T> {
     /**
      * Runs a side-effecting step on the async pool without changing the
      * flowing value.
+     *
+     * @param work the action applied on an async thread
+     * @return a new chain link with the same flowing value
      */
     public @NonNull TaskChain<T> asyncConsume(@NonNull Consumer<T> work) {
         return new TaskChain<>(plugin, root, ctx -> {
@@ -107,6 +122,9 @@ public final class TaskChain<T> {
     /**
      * Aborts the chain if the current value is null, invoking the given
      * handler first (on the current thread).
+     *
+     * @param onAbort invoked when aborting; receives null; may be null itself
+     * @return a new chain link that only continues when the value is non-null
      */
     public @NonNull TaskChain<T> abortIfNull(@Nullable Consumer<T> onAbort) {
         return new TaskChain<>(plugin, root, ctx -> {
@@ -125,6 +143,10 @@ public final class TaskChain<T> {
     /**
      * Aborts the chain if the predicate fails, invoking the given handler
      * first (on the current thread).
+     *
+     * @param condition predicate the current value must pass to continue
+     * @param onAbort   invoked when aborting; may be null
+     * @return a new chain link that only continues when the condition holds
      */
     public @NonNull TaskChain<T> abortIf(@NonNull Predicate<T> condition, @Nullable Consumer<T> onAbort) {
         return new TaskChain<>(plugin, root, ctx -> {
@@ -143,6 +165,9 @@ public final class TaskChain<T> {
     /**
      * Registers an error handler for any exception thrown inside any step.
      * Without one, exceptions are logged to the plugin logger.
+     *
+     * @param handler receives the thrown throwable
+     * @return this chain link
      */
     public @NonNull TaskChain<T> onError(@NonNull Consumer<Throwable> handler) {
         errorHandler = handler;
@@ -177,8 +202,13 @@ public final class TaskChain<T> {
 
     /**
      * Runs a step on the region thread that owns the given entity
-     * (Folia-safe entity access). Falls back to the global scheduler when
-     * the entity retires before the step runs.
+     * (Folia-safe entity access). Falls back to skipping the step when the
+     * entity retires before it runs.
+     *
+     * @param entity the entity whose region thread runs the work
+     * @param work   the transformation applied on the entity's thread
+     * @param <R>    the result type flowing to the next step
+     * @return a new chain link
      */
     public <R> @NonNull TaskChain<R> atEntity(@NonNull Entity entity, @NonNull Function<T, R> work) {
         return new TaskChain<>(plugin, root, ctx -> {

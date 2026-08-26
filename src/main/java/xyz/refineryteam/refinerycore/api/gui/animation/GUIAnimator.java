@@ -45,12 +45,23 @@ public final class GUIAnimator {
         this.gui = gui;
     }
 
+    /**
+     * Creates an animator for the given GUI. Call {@link #start()} to begin.
+     *
+     * @param plugin the plugin owning the animation task
+     * @param gui    the GUI to animate; the animator stops itself when it is destroyed
+     * @return a new animator with no updaters registered
+     */
     public static @NonNull GUIAnimator forGui(@NonNull Plugin plugin, @NonNull RefineryGUI gui) {
         return new GUIAnimator(plugin, gui);
     }
 
     /**
      * Sets the period between frames in ticks (default 1).
+     *
+     * @param periodTicks ticks between frames; must be &ge; 1
+     * @return this animator
+     * @throws IllegalArgumentException if periodTicks is below 1
      */
     public @NonNull GUIAnimator every(long periodTicks) {
         if (periodTicks < 1) throw new IllegalArgumentException("periodTicks must be >= 1");
@@ -62,6 +73,9 @@ public final class GUIAnimator {
      * How many consecutive frames the animator may run with zero viewers
      * before stopping itself. Default 100 (~5s at 20 TPS). Set to a huge
      * value to keep animating even when nobody is looking.
+     *
+     * @param frames idle frames tolerated before auto-stop
+     * @return this animator
      */
     public @NonNull GUIAnimator stopWhenIdleAfter(int frames) {
         this.emptyStopAfter = frames;
@@ -71,6 +85,9 @@ public final class GUIAnimator {
     /**
      * Registers a per-frame updater. Multiple updaters are supported and
      * run in registration order.
+     *
+     * @param updater invoked once per frame with the current frame number
+     * @return this animator
      */
     public @NonNull GUIAnimator updater(@NonNull FrameUpdater updater) {
         updaters.add(updater);
@@ -138,6 +155,12 @@ public final class GUIAnimator {
      */
     @FunctionalInterface
     public interface FrameUpdater {
+        /**
+         * Applies one animation frame.
+         *
+         * @param gui   the animated GUI; call {@code setItem} here
+         * @param frame monotonically increasing frame counter starting at 1
+         */
         void update(@NonNull RefineryGUI gui, long frame);
     }
 }

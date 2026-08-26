@@ -1,6 +1,7 @@
 package xyz.refineryteam.refinerycore.api.gui.preset;
 
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 import org.jspecify.annotations.NonNull;
 import xyz.refineryteam.refinerycore.api.interaction.AnvilPrompt;
 
@@ -25,7 +26,7 @@ import java.util.function.Predicate;
  */
 public final class TextInputGUI {
 
-    private final org.bukkit.plugin.Plugin plugin;
+    private final Plugin plugin;
     private final String title;
     private String initialText = "";
     private Predicate<String> validator;
@@ -38,10 +39,23 @@ public final class TextInputGUI {
         this.title = title;
     }
 
-    public static @NonNull TextInputGUI of(org.bukkit.plugin.Plugin plugin, @NonNull String title) {
+    /**
+     * Starts building a text input for the given plugin.
+     *
+     * @param plugin the plugin opening the prompt (owns the anvil listener)
+     * @param title  MiniMessage title of the anvil inventory
+     * @return a new builder
+     */
+    public static @NonNull TextInputGUI of(@NonNull Plugin plugin, @NonNull String title) {
         return new TextInputGUI(plugin, title);
     }
 
+    /**
+     * Pre-fills the anvil's rename field.
+     *
+     * @param text initial text shown in the input
+     * @return this builder
+     */
     public @NonNull TextInputGUI initialText(@NonNull String text) {
         this.initialText = text;
         return this;
@@ -50,6 +64,10 @@ public final class TextInputGUI {
     /**
      * If the predicate fails, the anvil stays open and {@code failMessage}
      * is shown instead of resolving.
+     *
+     * @param validator   predicate the submitted text must pass
+     * @param failMessage MiniMessage error shown when validation fails
+     * @return this builder
      */
     public @NonNull TextInputGUI validate(@NonNull Predicate<String> validator, @NonNull String failMessage) {
         this.validator = validator;
@@ -57,11 +75,24 @@ public final class TextInputGUI {
         return this;
     }
 
+    /**
+     * Sets the submit handler.
+     *
+     * @param handler receives the player and the validated text
+     * @return this builder
+     */
     public @NonNull TextInputGUI onInput(@NonNull BiConsumer<Player, String> handler) {
         this.onInput = handler;
         return this;
     }
 
+    /**
+     * Sets the cancel handler, invoked when the player closes the anvil
+     * without submitting.
+     *
+     * @param handler receives the player who cancelled
+     * @return this builder
+     */
     public @NonNull TextInputGUI onCancel(@NonNull Consumer<Player> handler) {
         this.onCancel = handler;
         return this;
@@ -69,6 +100,8 @@ public final class TextInputGUI {
 
     /**
      * Opens the input UI for the given player.
+     *
+     * @param target the player who will type into the anvil
      */
     public void open(@NonNull Player target) {
         AnvilPrompt.builder(plugin)

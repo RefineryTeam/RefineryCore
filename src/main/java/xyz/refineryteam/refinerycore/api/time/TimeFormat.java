@@ -38,6 +38,9 @@ public final class TimeFormat {
     /**
      * Formats with up to two significant units: "1y 3mo", "2d 5h",
      * "4h 15m", "8m 30s", "45s", "0s".
+     *
+     * @param duration the duration to format; negative treated as zero
+     * @return the formatted string
      */
     public static @NonNull String format(@NonNull Duration duration) {
         return format(duration.toMillis(), 2);
@@ -45,6 +48,9 @@ public final class TimeFormat {
 
     /**
      * Formats with a single significant unit: "2h", "15m", "45s".
+     *
+     * @param duration the duration to format; negative treated as zero
+     * @return the formatted string
      */
     public static @NonNull String formatShort(@NonNull Duration duration) {
         return format(duration.toMillis(), 1);
@@ -52,6 +58,10 @@ public final class TimeFormat {
 
     /**
      * Full precision formatting with explicit unit count.
+     *
+     * @param millis   milliseconds to format; negative treated as zero
+     * @param maxUnits maximum number of units to include (1–7)
+     * @return the formatted string, never empty
      */
     public static @NonNull String format(long millis, int maxUnits) {
         if (millis < 0) millis = 0;
@@ -96,9 +106,10 @@ public final class TimeFormat {
      * Parses compact duration strings like {@code "90s"}, {@code "1d6h"},
      * {@code "2w"}, or plain seconds ({@code "300"} → 5 minutes).
      *
-     * @return null when nothing in the input parses.
+     * @param input the string to parse
+     * @return the parsed duration, or null when nothing in the input parses
      */
-    public static @Nullable Duration parse(@NonNull String input) {
+    public static Duration parse(@NonNull String input) {
         input = input.trim().toLowerCase(Locale.ROOT);
         if (input.isEmpty()) return null;
 
@@ -132,6 +143,10 @@ public final class TimeFormat {
     /**
      * Like {@link #parse(String)} but throws on invalid input — handy for
      * command argument validation where you want to report a specific error.
+     *
+     * @param input the string to parse
+     * @return the parsed duration
+     * @throws IllegalArgumentException when nothing in the input parses
      */
     public static @NonNull Duration parseOrThrow(@NonNull String input) {
         Duration parsed = parse(input);

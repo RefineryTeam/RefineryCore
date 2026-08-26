@@ -35,6 +35,10 @@ public final class InventorySnapshot {
 
     /**
      * Captures the player's full inventory state.
+     *
+     * @param player the player whose inventory is captured
+     * @return an immutable snapshot; the player's items are cloned so later
+     *         changes don't affect it
      */
     public static @NonNull InventorySnapshot capture(@NonNull Player player) {
         PlayerInventory inv = player.getInventory();
@@ -47,6 +51,8 @@ public final class InventorySnapshot {
 
     /**
      * Restores a snapshot, replacing the player's entire inventory.
+     *
+     * @param player the player whose inventory is replaced
      */
     public void restore(@NonNull Player player) {
         PlayerInventory inv = player.getInventory();
@@ -59,6 +65,8 @@ public final class InventorySnapshot {
      * Merges a snapshot into the player's inventory without clearing it
      * first — items fill empty slots; overflow is dropped at the player's
      * feet by vanilla mechanics.
+     *
+     * @param player the player receiving the snapshot's items
      */
     public void merge(@NonNull Player player) {
         PlayerInventory inv = player.getInventory();
@@ -81,6 +89,8 @@ public final class InventorySnapshot {
 
     /**
      * Serializes to a compact Base64 string for database/config storage.
+     *
+     * @return the serialized snapshot string
      */
     public @NonNull String serialize() {
         return ItemSerializer.encodeArray(storage)
@@ -91,7 +101,9 @@ public final class InventorySnapshot {
     /**
      * Deserializes a string produced by {@link #serialize()}.
      *
-     * @throws IllegalArgumentException when the data is corrupt or truncated.
+     * @param data string produced by {@link #serialize()}
+     * @return the restored snapshot
+     * @throws IllegalArgumentException when the data is corrupt or truncated
      */
     public static @NonNull InventorySnapshot deserialize(@NonNull String data) {
         String[] parts = data.split("\\|", -1);
@@ -110,6 +122,9 @@ public final class InventorySnapshot {
 
     /**
      * Convenience one-liner: capture + serialize.
+     *
+     * @param player the player whose inventory is captured
+     * @return the serialized snapshot string
      */
     public static @NonNull String captureToString(@NonNull Player player) {
         return capture(player).serialize();
@@ -117,6 +132,9 @@ public final class InventorySnapshot {
 
     /**
      * Convenience one-liner: deserialize + restore.
+     *
+     * @param player the player whose inventory is replaced
+     * @param data   string produced by {@link #captureToString(Player)}
      */
     public static void restoreFromString(@NonNull Player player, @NonNull String data) {
         deserialize(data).restore(player);

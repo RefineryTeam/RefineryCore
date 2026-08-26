@@ -50,6 +50,12 @@ public final class ProxyMessenger {
     private final Plugin plugin;
     private final Map<String, BiConsumer<Player, byte[]>> handlers = new ConcurrentHashMap<>();
 
+    /**
+     * Creates a messenger and registers the proxy channel on the plugin's
+     * behalf. Call {@link #shutdown()} from onDisable.
+     *
+     * @param plugin the owning plugin; channels are registered under it
+     */
     public ProxyMessenger(@NonNull Plugin plugin) {
         this.plugin = plugin;
         plugin.getServer().getMessenger().registerOutgoingPluginChannel(plugin, CHANNEL);
@@ -73,6 +79,9 @@ public final class ProxyMessenger {
      * Registers a handler for a custom subchannel. The receiving player is
      * whoever the proxy used to deliver the message (often arbitrary) —
      * treat it as transport context, not as the message subject.
+     *
+     * @param subchannel the subchannel name to listen for
+     * @param handler    receives the transport player and the payload bytes
      */
     public void onMessage(@NonNull String subchannel, @NonNull BiConsumer<Player, byte[]> handler) {
         handlers.put(subchannel, handler);
@@ -80,6 +89,8 @@ public final class ProxyMessenger {
 
     /**
      * Removes a previously registered handler.
+     *
+     * @param subchannel the subchannel whose handler is removed
      */
     public void offMessage(@NonNull String subchannel) {
         handlers.remove(subchannel);
@@ -87,6 +98,9 @@ public final class ProxyMessenger {
 
     /**
      * Asks the proxy to connect the player to another backend server.
+     *
+     * @param player     the player to move
+     * @param serverName the target backend server name
      */
     public void connect(@NonNull Player player, @NonNull String serverName) {
         var out = ByteStreams.newDataOutput();
@@ -98,6 +112,9 @@ public final class ProxyMessenger {
     /**
      * Asks the proxy to connect a named player (possibly not online on
      * this server) to another backend server.
+     *
+     * @param playerName the player to move
+     * @param serverName the target backend server name
      */
     public void connectOther(@NonNull String playerName, @NonNull String serverName) {
         requireAnyPlayer();
@@ -112,6 +129,9 @@ public final class ProxyMessenger {
      * Forwards a custom payload to the same subchannel on every other
      * backend server. Pair with {@link #onMessage(String, BiConsumer)} on
      * the receiving side.
+     *
+     * @param subchannel the subchannel to forward on
+     * @param payload    the raw payload bytes
      */
     public void forwardToAll(@NonNull String subchannel, byte @NonNull [] payload) {
         requireAnyPlayer();
@@ -125,8 +145,12 @@ public final class ProxyMessenger {
     }
 
     /**
-     * Same as {@link #forwardToAll(String, byte[])} (byte[])} but targeted at one backend
+     * Same as {@link #forwardToAll(String, byte[])} but targeted at one backend
      * server by name.
+     *
+     * @param serverName the target backend server name
+     * @param subchannel the subchannel to forward on
+     * @param payload    the raw payload bytes
      */
     public void forwardToServer(@NonNull String serverName, @NonNull String subchannel, byte @NonNull [] payload) {
         requireAnyPlayer();
@@ -141,6 +165,9 @@ public final class ProxyMessenger {
 
     /**
      * Forwards to all servers including this one (the proxy relays back).
+     *
+     * @param subchannel the subchannel to forward on
+     * @param payload    the raw payload bytes
      */
     public void forwardToAllIncludingSelf(@NonNull String subchannel, byte @NonNull [] payload) {
         requireAnyPlayer();
@@ -163,6 +190,8 @@ public final class ProxyMessenger {
      *     int count = in.readInt();
      * });
      * }</pre>
+     *
+     * @param serverName the server to query, or "ALL" for every backend
      */
     public void requestPlayerCount(@NonNull String serverName) {
         requireAnyPlayer();
@@ -175,6 +204,8 @@ public final class ProxyMessenger {
     /**
      * Requests the real IP of a player behind the proxy. Reply arrives on
      * the "IP" subchannel.
+     *
+     * @param playerName the player whose IP is requested
      */
     public void requestRealIp(@NonNull String playerName) {
         requireAnyPlayer();
