@@ -64,13 +64,11 @@ public final class AnvilPrompt implements Listener {
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
 
         org.bukkit.inventory.Inventory created = plugin.getServer().createInventory(
-                player,
+            null,
                 org.bukkit.event.inventory.InventoryType.ANVIL,
                 xyz.refineryteam.refinerycore.api.minimessage.EasyMiniMessage.format(title)
         );
 
-        // Paper always returns an AnvilInventory for InventoryType.ANVIL;
-        // this cast should never fail on any supported Paper version.
         if (!(created instanceof AnvilInventory anvil)) {
             throw new IllegalStateException("Server did not provide an AnvilInventory for InventoryType.ANVIL");
         }

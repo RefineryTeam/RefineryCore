@@ -1,11 +1,12 @@
 package xyz.refineryteam.refinerycore.plugin.crash;
 
+import org.jspecify.annotations.NonNull;
 import xyz.refineryteam.refinerycore.api.crash.CrashHandler;
 import xyz.refineryteam.refinerycore.api.crash.CrashHint;
 
 public class CrashHints {
 
-    public static void init(CrashHandler crashHandler) {
+    public static void init(@NonNull CrashHandler crashHandler) {
         crashHandler.hint(CrashHint.of()
                 .matchesType(java.sql.SQLException.class)
                 .title("Database error")
@@ -34,7 +35,7 @@ public class CrashHints {
         crashHandler.hint(CrashHint.of()
                 .matchesType(ClassNotFoundException.class)
                 .title("Missing class")
-                .context("Class", e -> e.getMessage())
+                .context("Class", Throwable::getMessage)
                 .help(
                         "A required library or dependency is missing from the classpath.",
                         "If this is a soft dependency, is the providing plugin installed and enabled?",

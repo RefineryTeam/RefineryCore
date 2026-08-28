@@ -9,6 +9,7 @@ import org.bukkit.plugin.Plugin;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import xyz.refineryteam.refinerycore.api.minimessage.EasyMiniMessage;
+import xyz.refineryteam.refinerycore.api.text.Placeholders;
 
 import java.io.File;
 import java.util.HashMap;
@@ -153,7 +154,7 @@ public final class Messages {
      */
     public @NonNull Component component(@Nullable Player player, @NonNull String key, @NonNull TagResolver... resolvers) {
         String raw = resolveRaw(player, key);
-        return EasyMiniMessage.format(raw, resolvers);
+        return EasyMiniMessage.format(Placeholders.apply(raw, player), resolvers);
     }
 
     /**
@@ -184,19 +185,21 @@ public final class Messages {
         String prefix = resolveIn(bundleFor(player), "prefix");
         String body = resolveRaw(player, key);
         audience.sendMessage(EasyMiniMessage.format(
-                (prefix != null ? prefix : "") + body, resolvers));
+            Placeholders.apply((prefix != null ? prefix : "") + body, player), resolvers));
     }
 
     /**
      * Resolves a raw string without MiniMessage parsing — for places that
-     * need plain text (scoreboard lines, Discord, etc).
+     * need plain text (scoreboard lines, Discord, etc). Placeholders are
+     * still substituted, matching {@link #component}; only the
+     * MiniMessage formatting step is skipped.
      *
      * @param player the viewing player (selects the bundle), or null for default
      * @param key    dotted config path of the message
      * @return the untranslated-format string; the key itself if not found
      */
     public @NonNull String raw(@Nullable Player player, @NonNull String key) {
-        return resolveRaw(player, key);
+        return Placeholders.apply(resolveRaw(player, key), player);
     }
 
     /**
@@ -236,7 +239,7 @@ public final class Messages {
         if (value instanceof List<?> list) {
             StringBuilder joined = new StringBuilder();
             for (Object item : list) {
-                if (joined.length() > 0) joined.append('\n');
+                if (!joined.isEmpty()) joined.append('\n');
                 joined.append(item);
             }
             return joined.toString();
@@ -252,7 +255,6 @@ public final class Messages {
     }
 
     private static @NonNull String localeCode(@NonNull Locale locale) {
-        String tag = locale.toLanguageTag().toLowerCase(Locale.ROOT).replace('-', '_');
-        return tag;
+        return locale.toLanguageTag().toLowerCase(Locale.ROOT).replace('-', '_');
     }
 }

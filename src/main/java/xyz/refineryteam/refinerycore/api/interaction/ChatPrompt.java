@@ -98,6 +98,7 @@ public final class ChatPrompt {
      */
     public void send() {
         UUID id = player.getUniqueId();
+        PromptRegistry.install(plugin);
 
         if (promptMessage != null) {
             player.sendMessage(EasyMiniMessage.format(promptMessage));

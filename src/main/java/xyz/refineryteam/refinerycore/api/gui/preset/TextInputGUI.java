@@ -3,15 +3,17 @@ package xyz.refineryteam.refinerycore.api.gui.preset;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.jspecify.annotations.NonNull;
-import xyz.refineryteam.refinerycore.api.interaction.AnvilPrompt;
+import xyz.refineryteam.refinerycore.api.interaction.ChatPrompt;
+import xyz.refineryteam.refinerycore.api.minimessage.EasyMiniMessage;
+import xyz.refineryteam.refinerycore.api.text.Placeholders;
 
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 /**
- * Anvil-based single-line text input, presented as a GUI preset so it sits
- * alongside the other menu flows. Thin composition over {@link AnvilPrompt}
+ * Chat-based single-line text input, presented as a GUI preset so it sits
+ * alongside the other menu flows. Thin composition over {@link ChatPrompt}
  * with a simpler signature for the common "ask for a string" case.
  * <p>
  * Usage:
@@ -42,8 +44,8 @@ public final class TextInputGUI {
     /**
      * Starts building a text input for the given plugin.
      *
-     * @param plugin the plugin opening the prompt (owns the anvil listener)
-     * @param title  MiniMessage title of the anvil inventory
+    * @param plugin the plugin opening the prompt
+    * @param title  MiniMessage prompt message
      * @return a new builder
      */
     public static @NonNull TextInputGUI of(@NonNull Plugin plugin, @NonNull String title) {
@@ -51,7 +53,7 @@ public final class TextInputGUI {
     }
 
     /**
-     * Pre-fills the anvil's rename field.
+    * Retained for API compatibility; chat prompts cannot pre-fill input.
      *
      * @param text initial text shown in the input
      * @return this builder
@@ -62,8 +64,8 @@ public final class TextInputGUI {
     }
 
     /**
-     * If the predicate fails, the anvil stays open and {@code failMessage}
-     * is shown instead of resolving.
+    * If the predicate fails, the prompt remains active and {@code failMessage}
+    * is shown instead of resolving.
      *
      * @param validator   predicate the submitted text must pass
      * @param failMessage MiniMessage error shown when validation fails
@@ -87,8 +89,7 @@ public final class TextInputGUI {
     }
 
     /**
-     * Sets the cancel handler, invoked when the player closes the anvil
-     * without submitting.
+    * Sets the cancel handler, invoked when the player types {@code cancel}.
      *
      * @param handler receives the player who cancelled
      * @return this builder
@@ -99,17 +100,24 @@ public final class TextInputGUI {
     }
 
     /**
-     * Opens the input UI for the given player.
+    * Opens the input prompt for the given player.
      *
-     * @param target the player who will type into the anvil
+    * @param target the player who will type the response
      */
     public void open(@NonNull Player target) {
-        AnvilPrompt.builder(plugin)
-                .title(title)
-                .initialText(initialText)
-                .validate(validator, validationFailMessage)
-                .onInput(onInput)
-                .onCancel(onCancel != null ? onCancel : p -> {})
-                .open(target);
+        ChatPrompt prompt = ChatPrompt.of(plugin, target)
+                .prompt(title)
+                .onInput(text -> {
+                    if (validator != null && !validator.test(text)) {
+                        target.sendMessage(EasyMiniMessage.format(Placeholders.apply(validationFailMessage, target)));
+                        open(target);
+                        return;
+                    }
+                    if (onInput != null) onInput.accept(target, text);
+                })
+                .onCancel(() -> {
+                    if (onCancel != null) onCancel.accept(target);
+                });
+        prompt.send();
     }
 }

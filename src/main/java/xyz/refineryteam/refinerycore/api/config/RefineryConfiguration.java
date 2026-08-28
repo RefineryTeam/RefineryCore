@@ -5,16 +5,34 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jspecify.annotations.NonNull;
-import xyz.refineryteam.refinerycore.api.config.annotation.Category;
 import xyz.refineryteam.refinerycore.api.config.annotation.ConfigEntry;
 import xyz.refineryteam.refinerycore.api.config.annotation.ConfigFile;
 import xyz.refineryteam.refinerycore.api.config.annotation.ConfigSection;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
 import java.util.logging.Level;
 
+/**
+ * Base class for annotation-driven, reflection-backed configuration files.
+ * <p>
+ * <b>Comment preservation.</b> If the plugin jar ships a resource at the
+ * same path as {@link ConfigFile#value()} (e.g. {@code resources/config.yml}),
+ * that resource is treated as the authoritative, hand-commented template:
+ * on first run it is copied to disk byte-for-byte via
+ * {@link JavaPlugin#saveResource(String, boolean)}, so every comment in the
+ * source file survives untouched. On every load afterward, any entry the
+ * template didn't define (e.g., added in a newer plugin version) is appended
+ * to the bottom of the file as plain, uncommented lines rather than
+ * triggering a full YAML re-serialization — {@link YamlConfiguration#save}
+ * would otherwise silently discard every comment in the file. If no bundled
+ * resource exists for this file, an empty file is created and populated
+ * from field defaults with no comments, as before.
+ */
 public abstract class RefineryConfiguration {
 
     @Getter
@@ -32,19 +50,29 @@ public abstract class RefineryConfiguration {
         this.file = new File(plugin.getDataFolder(), meta.value());
 
         if (!file.exists()) {
-            file.getParentFile().mkdirs();
-            try {
-                file.createNewFile();
-            } catch (IOException e) {
-                plugin.getLogger().log(Level.SEVERE, "Failed to create config file: " + file.getName(), e);
-                return;
+            if (hasBundledResource(meta.value())) {
+                // Copies the resource verbatim, preserving every comment
+                // written in the source file — no reflection writes touch
+                // this file's bytes on first run.
+                plugin.saveResource(meta.value(), false);
+            } else {
+                file.getParentFile().mkdirs();
+                try {
+                    file.createNewFile();
+                } catch (IOException e) {
+                    plugin.getLogger().log(Level.SEVERE, "Failed to create config file: " + file.getName(), e);
+                    return;
+                }
             }
         }
 
         this.yaml = YamlConfiguration.loadConfiguration(file);
-        writeDefaults(this, null);
 
-        save();
+        // Only entries genuinely absent from the file (missing from an
+        // outdated template, or there was no bundled resource at all) get
+        // written. They're appended as plain text so existing comments and
+        // formatting are left completely alone.
+        appendMissingDefaults(this, null);
     }
 
     public void load() {
@@ -57,6 +85,16 @@ public abstract class RefineryConfiguration {
         load();
     }
 
+    /**
+     * Fully re-serializes the file with Bukkit's YAML writer. This is the
+     * only path in this class that can lose handwritten comments — Bukkit's
+     * {@link YamlConfiguration} has no concept of comments once a file is
+     * parsed, so any comment present before a {@code save()} call will not
+     * appear in the result. Prefer letting {@link #saveDefault()} /
+     * {@link #load()} manage the file on disk; call this directly only when
+     * a value was changed in code (e.g. from a {@code /config set} command)
+     * and must be persisted.
+     */
     public void save() {
         if (yaml == null || file == null) return;
         try {
@@ -66,7 +104,40 @@ public abstract class RefineryConfiguration {
         }
     }
 
-    private void writeDefaults(@NonNull Object instance, String sectionPrefix) {
+    private boolean hasBundledResource(@NonNull String resourcePath) {
+        try (InputStream stream = plugin.getResource(resourcePath)) {
+            return stream != null;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Same traversal as the old {@code writeDefaults}, but instead of
+     * mutating the in-memory {@link FileConfiguration} and re-saving the
+     * whole document, it collects only the paths that are missing and
+     * appends them to the file as raw YAML lines — a comment-safe
+     * alternative to {@link YamlConfiguration#save}.
+     */
+    private void appendMissingDefaults(@NonNull Object instance, String sectionPrefix) {
+        StringBuilder appendix = new StringBuilder();
+        collectMissingDefaults(instance, sectionPrefix, appendix);
+
+        if (appendix.isEmpty()) return;
+
+        try (FileWriter writer = new FileWriter(file, StandardCharsets.UTF_8, true)) {
+            writer.write("\n");
+            writer.write(appendix.toString());
+        } catch (IOException e) {
+            plugin.getLogger().log(Level.SEVERE, "Failed to append missing defaults to: " + file.getName(), e);
+            return;
+        }
+
+        // Re-parse so in-memory state reflects what's now on disk.
+        this.yaml = YamlConfiguration.loadConfiguration(file);
+    }
+
+    private void collectMissingDefaults(@NonNull Object instance, String sectionPrefix, @NonNull StringBuilder appendix) {
         for (Field field : instance.getClass().getDeclaredFields()) {
             field.setAccessible(true);
 
@@ -77,11 +148,7 @@ public abstract class RefineryConfiguration {
                 if (!yaml.contains(path)) {
                     try {
                         Object value = field.get(instance);
-                        if (value instanceof java.util.List<?> list) {
-                            yaml.set(path, new java.util.ArrayList<>(list));
-                        } else {
-                            yaml.set(path, value);
-                        }
+                        appendYamlLine(appendix, path, value);
                     } catch (IllegalAccessException e) {
                         plugin.getLogger().warning("Could not read default for: " + path);
                     }
@@ -93,12 +160,30 @@ public abstract class RefineryConfiguration {
                 String nestedPrefix = buildPath(sectionPrefix, section.value());
                 try {
                     Object nested = field.get(instance);
-                    if (nested != null) writeDefaults(nested, nestedPrefix);
+                    if (nested != null) collectMissingDefaults(nested, nestedPrefix, appendix);
                 } catch (IllegalAccessException e) {
                     plugin.getLogger().warning("Could not access section field: " + field.getName());
                 }
             }
         }
+    }
+
+    /**
+     * Appends a single {@code dotted.path: value} entry using a throwaway
+     * {@link YamlConfiguration} to get correct YAML scalar/list formatting
+     * (quoting, list syntax) without hand-rolling a serializer, then copies
+     * just that rendered line(s) onto the appendix. {@code saveToString()}
+     * has no file-header banner (unlike {@code save(File)}), so its output
+     * is safe to append as-is.
+     */
+    private void appendYamlLine(@NonNull StringBuilder appendix, @NonNull String path, Object value) {
+        YamlConfiguration scratch = new YamlConfiguration();
+        if (value instanceof java.util.List<?> list) {
+            scratch.set(path, new java.util.ArrayList<>(list));
+        } else {
+            scratch.set(path, value);
+        }
+        appendix.append(scratch.saveToString());
     }
 
     private void readInto(@NonNull Object instance, String sectionPrefix) {
